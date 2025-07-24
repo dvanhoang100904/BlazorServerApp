@@ -1,0 +1,212 @@
+﻿@page "/loai-san-pham"
+@using BlazorServerApp.Models
+@using Microsoft.EntityFrameworkCore
+@inject BlazorServerApp.Data.AppDbContext _context
+@inject IJSRuntime JS
+
+<h3>Quản Lý Loại Sản Phẩm</h3>
+<br />
+
+<EditForm Model="@formModel" OnValidSubmit="Save">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger">@errorMessage</div>
+    }
+
+    <div class="row mb-2">
+        <div class="col-md-4">
+            <label>Mã loại sản phẩm:</label>
+            <InputText @bind-Value="formModel.MaLoaiSanPham" class="form-control"></InputText>
+        </div>
+        <div class="col-md-4">
+            <label>Tên loại sản phẩm:</label>
+            <InputText @bind-Value="formModel.TenLoaiSanPham" class="form-control"></InputText>
+        </div>
+    </div>
+
+    <div class="row mb-2">
+        <div class="col-md-8">
+            <label>Ghi chú:</label>
+            <InputText @bind-Value="formModel.GhiChu" class="form-control"></InputText>
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary mt-2">
+        @(isEdit ? "Cập nhật" : "Thêm mới")
+    </button>
+
+    @if (isEdit)
+    {
+        <button type="button" class="btn btn-secondary mt-2 ms-2" @onclick="CancelEdit">
+            Hủy
+        </button>
+    }
+</EditForm>
+
+<hr />
+
+<table class="table table-bordered">
+    <thead class="table-light">
+        <tr>
+            <th>Mã loại sản phẩm</th>
+            <th>Tên loại sản phẩm</th>
+            <th>Ghi chú</th>
+            <th style="width: 160px;">Thao tác</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var loaiSanPham in loaiSanPhams)
+        {
+            <tr>
+                <td>@loaiSanPham.MaLoaiSanPham</td>
+                <td>@loaiSanPham.TenLoaiSanPham</td>
+                <td>@loaiSanPham.GhiChu</td>
+                <td>
+                    <button class="btn btn-sm btn-warning me-1" @onclick="() => Edit(loaiSanPham)">Sửa</button>
+                    <button class="btn btn-sm btn-danger" @onclick="() => ConfirmDelete(loaiSanPham.Id)">Xóa</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private List<LoaiSanPham> loaiSanPhams = new();
+    private LoaiSanPham formModel = new();
+    private bool isEdit = false;
+    private string? errorMessage;
+
+    // Ham khoi tao khi load component
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    // Load danh sach loai san pham tu database
+    private async Task LoadData()
+    {
+        loaiSanPhams = await _context.LoaiSanPhams
+            .OrderBy(l => l.TenLoaiSanPham)
+            .ToListAsync();
+    }
+
+    // Xu ly them moi hoac cap nhat
+    private async Task Save()
+    {
+        errorMessage = null;
+
+        formModel.MaLoaiSanPham = formModel.MaLoaiSanPham?.Trim();
+        formModel.TenLoaiSanPham = formModel.TenLoaiSanPham?.Trim();
+
+        if (string.IsNullOrWhiteSpace(formModel.MaLoaiSanPham))
+        {
+            errorMessage = "Mã loại sản phẩm không được để trống.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(formModel.TenLoaiSanPham))
+        {
+            errorMessage = "Tên loại sản phẩm không được để trống.";
+            return;
+        }
+
+        bool isMaLoaiSanPham = isEdit
+            ? _context.LoaiSanPhams.Any(l => l.MaLoaiSanPham == formModel.MaLoaiSanPham && l.Id != formModel.Id)
+            : _context.LoaiSanPhams.Any(l => l.MaLoaiSanPham == formModel.MaLoaiSanPham);
+
+        bool isTenLoaiSanPham = isEdit
+            ? _context.LoaiSanPhams.Any(l => l.TenLoaiSanPham == formModel.TenLoaiSanPham && l.Id != formModel.Id)
+            : _context.LoaiSanPhams.Any(l => l.TenLoaiSanPham == formModel.TenLoaiSanPham);
+
+        if (isMaLoaiSanPham)
+        {
+            errorMessage = "Mã loại sản phẩm đã tồn tại!";
+            return;
+        }
+
+        if (isTenLoaiSanPham)
+        {
+            errorMessage = "Tên loại sản phẩm đã tồn tại!";
+            return;
+        }
+
+        if (isEdit)
+        {
+            // Neu dang sua, tim id de cat nhat
+            var loaiSanPham = await _context.LoaiSanPhams.FindAsync(formModel.Id);
+            if (loaiSanPham != null)
+            {
+                loaiSanPham.MaLoaiSanPham = formModel.MaLoaiSanPham;
+                loaiSanPham.TenLoaiSanPham = formModel.TenLoaiSanPham;
+                loaiSanPham.GhiChu = formModel.GhiChu;
+            }
+        }
+        else
+        {
+            // Neu them moi
+            _context.LoaiSanPhams.Add(formModel);
+        }
+        // Luu thay doi xuong database
+        await _context.SaveChangesAsync();
+
+        // Reset form va trang thai
+        formModel = new LoaiSanPham();
+        isEdit = false;
+
+        // Load lai danh sach sau khi cap nhat
+        await LoadData();
+    }
+
+    // Gan du lieu vao form de sua
+    private void Edit(LoaiSanPham loaiSanPham)
+    {
+        formModel = new LoaiSanPham
+        {
+            Id = loaiSanPham.Id,
+            MaLoaiSanPham = loaiSanPham.MaLoaiSanPham,
+            TenLoaiSanPham = loaiSanPham.TenLoaiSanPham,
+            GhiChu = loaiSanPham.GhiChu
+        };
+        isEdit = true;
+        errorMessage = null;
+    }
+
+    // Huy chinh sua va reset form
+    private void CancelEdit()
+    {
+        formModel = new LoaiSanPham();
+        isEdit = false;
+        errorMessage = null;
+    }
+
+    // Xoa loai san pham
+    private async Task Delete(int id)
+    {
+        var isSanPhamUsed = await _context.SanPhams.AnyAsync(s => s.LoaiSanPhamId == id);
+
+        if (isSanPhamUsed)
+        {
+            errorMessage = "Không thể xóa vì loại sản phẩm này được sử dụng bới sản phẩm";
+            return;
+        }
+
+        var loaiSanPham = await _context.LoaiSanPhams.FindAsync(id);
+        if (loaiSanPham != null)
+        {
+            _context.LoaiSanPhams.Remove(loaiSanPham);
+            await _context.SaveChangesAsync();
+            await LoadData();
+        }
+    }
+
+    private async Task ConfirmDelete(int id)
+    {
+        if (await JS.InvokeAsync<bool>("confirm", "Bạn có chắc muốn xóa"))
+        {
+            await Delete(id);
+        }
+    }
+}

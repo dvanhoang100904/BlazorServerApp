@@ -1,0 +1,219 @@
+﻿@page "/nha-cung-cap"
+@using BlazorServerApp.Models
+@using Microsoft.EntityFrameworkCore
+@inject BlazorServerApp.Data.AppDbContext _context
+@inject IJSRuntime JS
+
+<h3>Quản Lý Nhà Cung Cấp</h3>
+<br />
+<EditForm Model="@formModel" OnValidSubmit="Save">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger">@errorMessage</div>
+    }
+    <div class="row mb-2">
+        <div class="col-md-4">
+            <label>Mã nhà cung cấp: </label>
+            <InputText @bind-Value="formModel.MaNhaCungCap" class="form-control"></InputText>
+        </div>
+        <div class="col-md-4">
+            <label>Tên nhà cung cấp: </label>
+            <InputText @bind-Value="formModel.TenNhaCungCap" class="form-control"></InputText>
+        </div>
+    </div>
+    <div class="row mb-2">
+        <div class="col-md-8">
+            <label>Ghi chú: </label>
+            <InputText @bind-Value="formModel.GhiChu" class="form-control"></InputText>
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary mt-2">
+        @(isEdit ? "Cập nhật" : "Thêm mới")
+    </button>
+
+    @if (isEdit)
+    {
+        <button type="button" class="btn btn-secondary mt-2 ms-2" @onclick="CancelEdit">Hủy</button>
+    }
+
+</EditForm>
+
+<hr />
+<table class="table table-bordered">
+    <thead class="table-light">
+        <tr>
+            <th>Mã nhà cung cấp</th>
+            <th>Tên nhà cung cấp</th>
+            <th>Ghi chú</th>
+            <th style="width: 160px;">Thao tác</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var nhaCungCap in nhaCungCaps)
+        {
+            <tr>
+                <td>@nhaCungCap.MaNhaCungCap</td>
+                <td>@nhaCungCap.TenNhaCungCap</td>
+                <td>@nhaCungCap.GhiChu</td>
+                <td>
+                    <button class="btn btn-sm btn-warning me-1" @onclick="() => Edit(nhaCungCap)">Sửa</button>
+                    <button class="btn btn-sm btn-danger" @onclick="() => confirmDelete(nhaCungCap.Id)">Xóa</button>
+                </td>
+            </tr>
+        }
+
+    </tbody>
+</table>
+@code {
+    private List<NhaCungCap> nhaCungCaps = new();
+    private NhaCungCap formModel = new();
+    private bool isEdit = false;
+    private string? errorMessage;
+
+    // Ham khoi tao khi load component
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    // Load danh sach san pham tu database
+    private async Task LoadData()
+    {
+        nhaCungCaps = await _context.NhaCungCaps
+            .OrderBy(n => n.TenNhaCungCap)
+            .ToListAsync();
+    }
+
+    private async Task Save()
+    {
+        errorMessage = null;
+
+        formModel.MaNhaCungCap = formModel.MaNhaCungCap?.Trim();
+        formModel.TenNhaCungCap = formModel.TenNhaCungCap?.Trim();
+
+        if (string.IsNullOrWhiteSpace(formModel.MaNhaCungCap))
+        {
+            errorMessage = "Mã nhà cung cấp không được để trống.";
+            return;
+        }
+        await LoadData();
+
+        if (string.IsNullOrWhiteSpace(formModel.TenNhaCungCap))
+        {
+            errorMessage = "Tên nhà cung cấp không được để trống";
+            return;
+        }
+
+        bool isMaNhaCungCapTrung = isEdit
+            ? _context.NhaCungCaps.Any(n => n.MaNhaCungCap == formModel.MaNhaCungCap && n.Id != formModel.Id)
+            : _context.NhaCungCaps.Any(n => n.MaNhaCungCap == formModel.MaNhaCungCap);
+
+        bool isTenNhaCungCapTrung = isEdit
+            ? _context.NhaCungCaps.Any(n => n.TenNhaCungCap == formModel.TenNhaCungCap && n.Id != formModel.Id)
+            : _context.NhaCungCaps.Any(n => n.TenNhaCungCap == formModel.TenNhaCungCap);
+
+        if (isMaNhaCungCapTrung)
+        {
+            errorMessage = "Mã nhà cung cấp đã tồn tại!";
+            return;
+        }
+
+        if (isTenNhaCungCapTrung)
+        {
+            errorMessage = "Tên nhà cung cấp đã tồn tại!";
+            return;
+        }
+
+        if (isEdit)
+        {
+            // Neu dang sua, tim id de cap nhat
+            var nhaCungCap = await _context.NhaCungCaps.FindAsync(formModel.Id);
+            if (nhaCungCap != null)
+            {
+                nhaCungCap.MaNhaCungCap = formModel.MaNhaCungCap;
+                nhaCungCap.TenNhaCungCap = formModel.TenNhaCungCap;
+                nhaCungCap.GhiChu = formModel.GhiChu;
+            }
+        }
+        else
+        {
+            // Neu them moi
+            _context.NhaCungCaps.Add(formModel);
+        }
+        // Luu thay doi xuong database
+        await _context.SaveChangesAsync();
+
+        formModel = new NhaCungCap();
+        isEdit = false;
+
+        // Load lai danh sach sau khi cap nhat
+        await LoadData();
+
+    }
+
+    // Gan du lieu vao form de sua
+    private void Edit(NhaCungCap nhaCungCap)
+    {
+        formModel = new NhaCungCap
+        {
+            Id = nhaCungCap.Id,
+            MaNhaCungCap = nhaCungCap.MaNhaCungCap,
+            TenNhaCungCap = nhaCungCap.TenNhaCungCap,
+            GhiChu = nhaCungCap.GhiChu
+
+        };
+        isEdit = true;
+        errorMessage = null;
+
+    }
+
+    // Huy chinh sua va reset form
+    private void CancelEdit()
+    {
+        formModel = new NhaCungCap();
+        isEdit = false;
+        errorMessage = null;
+    }
+
+    // Xoa
+    private async Task Delete(int id)
+    {
+        var isPhieuNhapUsed = await _context.PhieuNhaps.AnyAsync(p => p.NhaCungCapId == id);
+
+        var isXnkPhieuNhapUsed = await _context.XnkPhieuNhaps.AnyAsync(p => p.NhaCungCapId == id);
+
+        if (isPhieuNhapUsed)
+        {
+            errorMessage = "Không thể xóa vì nhà cung cấp này được sử dụng bới phiếu nhập";
+            return;
+        }
+
+        if (isXnkPhieuNhapUsed)
+        {
+            errorMessage = "Không thể xóa vì nhà cung cấp này được sử dụng bới phiếu nhập đã hiệu chỉnh";
+            return;
+        }
+
+        var nhaCungCap = await _context.NhaCungCaps.FindAsync(id);
+        if (nhaCungCap != null)
+        {
+            _context.NhaCungCaps.Remove(nhaCungCap);
+            await _context.SaveChangesAsync();
+            await LoadData();
+        }
+
+    }
+
+    private async Task confirmDelete(int id)
+    {
+        if (await JS.InvokeAsync<bool>("confirm", "Bạn có chắc muốn xóa"))
+        {
+            await Delete(id);
+        }
+    }
+
+}

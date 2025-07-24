@@ -1,0 +1,190 @@
+﻿@page "/don-vi-tinh"
+@using BlazorServerApp.Models
+@using Microsoft.EntityFrameworkCore
+@inject BlazorServerApp.Data.AppDbContext _context
+@inject IJSRuntime JS
+
+<h3>Quản Lý Đơn Vị Tính</h3>
+<br />
+
+<EditForm Model="@formModel" OnValidSubmit="Save">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger">@errorMessage</div>
+    }
+    <div class="row mb-2">
+        <div class="col-md-4">
+            <label>Tên đơn vị tính:</label>
+            <InputText @bind-Value="formModel.TenDonViTinh" class="form-control"/>
+        </div>
+    </div>
+    <div class="row mb-2">
+        <div class="col-md-8">
+            <label>Ghi chú:</label>
+            <InputText @bind-Value="formModel.GhiChu" class="form-control"/>
+        </div>
+    </div>
+   
+    <button type="submit" class="btn btn-primary mt-2">
+        @(isEdit ? "Cập nhật" : "Thêm mới")
+    </button>
+
+    @if (isEdit)
+    {
+        <button type="button" class="btn btn-secondary mt-2 ms-2" @onclick="CancelEdit">
+            Hủy
+        </button>
+    }
+</EditForm>
+
+<hr />
+
+<table class="table table-bordered">
+    <thead class="table-light">
+        <tr>
+            <th>Tên đơn vị tính</th>
+            <th>Ghi chú</th>
+            <th style="width: 160px;">Thao tác</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var donViTinh in donViTinhs)
+        {
+            <tr>
+                <td>@donViTinh.TenDonViTinh</td>
+                <td>@donViTinh.GhiChu</td>
+                <td>
+                    <button class="btn btn-sm btn-warning me-1" @onclick="() => Edit(donViTinh)">Sửa</button>
+                    <button class="btn btn-sm btn-danger" @onclick="() => ConfirmDelete(donViTinh.Id)">Xóa</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private List<DonViTinh> donViTinhs = new();
+    private DonViTinh formModel = new();
+    private bool isEdit = false;
+    private string? errorMessage;
+
+    // Ham khoi tao khi load component
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    // Load danh sach don vi tinh tu database
+    private async Task LoadData()
+    {
+        donViTinhs = await _context.DonViTinhs
+            .OrderBy(d => d.TenDonViTinh)
+            .ToListAsync();
+    }
+
+    // Xu ly them moi hoac cap nhat
+    private async Task Save()
+    {
+        errorMessage = null;
+
+        formModel.TenDonViTinh = formModel.TenDonViTinh?.Trim();
+
+        if (string.IsNullOrWhiteSpace(formModel.TenDonViTinh))
+        {
+            errorMessage = "Tên đơn vị tính không được để trống.";
+            return;
+        }
+
+        bool isTenTrung = isEdit
+            ? _context.DonViTinhs.Any(d => d.TenDonViTinh == formModel.TenDonViTinh && d.Id != formModel.Id)
+            : _context.DonViTinhs.Any(d => d.TenDonViTinh == formModel.TenDonViTinh);
+
+        if (isTenTrung)
+        {
+            errorMessage = "Tên đơn vị tính đã tồn tại!";
+            return;
+        }
+
+        if (isEdit)
+        {
+            // Neu dang sua, tim id de cat nhat
+            var donViTinh = await _context.DonViTinhs.FindAsync(formModel.Id);
+            if (donViTinh != null)
+            {
+                donViTinh.TenDonViTinh = formModel.TenDonViTinh;
+                donViTinh.GhiChu = formModel.GhiChu;
+            }
+        }
+        else
+        {
+            // Neu them moi
+            _context.DonViTinhs.Add(formModel);
+        }
+
+        // Luu thay doi xuong database
+        await _context.SaveChangesAsync();
+
+        // Reset form va trang thai
+        formModel = new DonViTinh();
+        isEdit = false;
+
+        // Load lai danh sach sau khi cap nhat
+        await LoadData();
+    }
+
+    // Gan du lieu vao form de sua
+    private void Edit(DonViTinh donViTinh)
+    {
+        formModel = new DonViTinh
+        {
+            Id = donViTinh.Id,
+            TenDonViTinh = donViTinh.TenDonViTinh,
+            GhiChu = donViTinh.GhiChu
+        };
+        isEdit = true;
+        errorMessage = null;
+    }
+
+    // Huy chinh sua va reset form
+    private void CancelEdit()
+    {
+        formModel = new DonViTinh();
+        isEdit = false;
+        errorMessage = null;
+    }
+
+    // Xoa don vi tinh
+    private async Task Delete(int id)
+    {
+        errorMessage = null;
+
+        // Kiem tra xem co san pham nao su dung don vi tinh nay khong
+        bool isDonViTinhUsed = await _context.SanPhams.AnyAsync(s => s.DonViTinhId == id);
+
+        if (isDonViTinhUsed)
+        {
+            errorMessage = "Không thể xóa vì đơn vị tính này đang được sử dụng bởi sản phẩm";
+            return;
+        }
+
+        var donViTinh = await _context.DonViTinhs.FindAsync(id);
+        if (donViTinh != null)
+        {
+            _context.DonViTinhs.Remove(donViTinh);
+            await _context.SaveChangesAsync();
+            await LoadData();
+        }
+    }
+
+    private async Task ConfirmDelete(int id)
+    {
+        if (await JS.InvokeAsync<bool>("confirm", "Bạn có chắc muốn xóa?"))
+        {
+            await Delete(id);
+        }
+    }
+
+}

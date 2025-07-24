@@ -1,0 +1,185 @@
+﻿@page "/phan-quyen-kho"
+@using BlazorServerApp.Models
+@using Microsoft.EntityFrameworkCore
+@inject BlazorServerApp.Data.AppDbContext _context
+@inject IJSRuntime JS
+
+<h3>Phân Quyền Kho - User</h3>
+<br />
+
+<EditForm Model="@formModel" OnValidSubmit="Save">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger">@errorMessage</div>
+    }
+
+    <div class="row mb-2">
+        <div class="col-md-4">
+            <label>Mã đăng nhập:</label>
+            <InputText @bind-Value="formModel.MaDangNhap" class="form-control" />
+        </div>
+    </div>
+
+    <div class="row mb-2">
+        <div class="col-md-4">
+            <label>Kho:</label>
+            <InputSelect @bind-Value="formModel.KhoId" class="form-select">
+                <option value="0">-- Chọn kho --</option>
+                @foreach (var kho in khos)
+                {
+                    <option value="@kho.Id">@kho.TenKho</option>
+                }
+            </InputSelect>
+        </div>
+    </div>
+
+    <button class="btn btn-primary mt-2">
+        @(isEdit ? "Cập nhật" : "Thêm mới")
+    </button>
+
+    @if (isEdit)
+    {
+        <button class="btn btn-secondary mt-2 ms-2" @onclick="CancelEdit">Hủy</button>
+    }
+</EditForm>
+
+<hr />
+
+<table class="table table-bordered">
+    <thead class="table-light">
+        <tr>
+            <th>Mã đăng nhập</th>
+            <th>Kho</th>
+            <th style="width: 160px;">Thao tác</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var khoUser in khoUsers)
+        {
+            <tr>
+                <td>@khoUser.MaDangNhap</td>
+                <td>@khoUser.Kho?.TenKho</td>
+                <td>
+                    <button class="btn btn-sm btn-warning me-1" @onclick="() => Edit(khoUser)">Sửa</button>
+                    <button class="btn btn-sm btn-danger" @onclick="() => confirmDelete(khoUser.Id)">Xóa</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private List<KhoUser> khoUsers = new();
+    private List<Kho> khos = new();
+    private KhoUser formModel = new();
+    private string? errorMessage;
+    private bool isEdit = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        khoUsers = await _context.KhoUsers
+           .Include(k => k.Kho)
+           .OrderBy(k => k.MaDangNhap)
+           .ToListAsync();
+
+        khos = await _context.Khos
+            .OrderBy(k => k.TenKho)
+            .ToListAsync();
+
+    }
+
+    private async Task Save()
+    {
+        errorMessage = null;
+
+        formModel.MaDangNhap = formModel.MaDangNhap?.Trim();
+
+        if (string.IsNullOrWhiteSpace(formModel.MaDangNhap))
+        {
+            errorMessage = "Mã đăng nhập không được để trống.";
+            return;
+        }
+
+        if (formModel.KhoId == 0)
+        {
+            errorMessage = "Phải chọn kho.";
+            return;
+        }
+
+        bool isMaDangNhapTrung = isEdit
+            ? _context.KhoUsers.Any(k => k.MaDangNhap == formModel.MaDangNhap && k.KhoId == formModel.KhoId && k.Id != formModel.Id)
+            : _context.KhoUsers.Any(k => k.MaDangNhap == formModel.MaDangNhap && k.KhoId == formModel.KhoId);
+
+        if (isMaDangNhapTrung)
+        {
+            errorMessage = "User này đã được phân quyền kho này.";
+            return;
+        }
+
+        if (isEdit)
+        {
+            var khoUser = await _context.KhoUsers.FindAsync(formModel.Id);
+            if (khoUser != null)
+            {
+                khoUser.MaDangNhap = formModel.MaDangNhap;
+                khoUser.KhoId = formModel.KhoId;
+            }
+        }
+        else
+        {
+            _context.KhoUsers.Add(formModel);
+        }
+
+        await _context.SaveChangesAsync();
+        formModel = new KhoUser();
+        isEdit = false;
+        await LoadData();
+    }
+
+    private void Edit(KhoUser khoUser)
+    {
+        formModel = new KhoUser
+        {
+            Id = khoUser.Id,
+            MaDangNhap = khoUser.MaDangNhap,
+            KhoId = khoUser.KhoId
+        };
+        isEdit = true;
+        errorMessage = null;
+    }
+
+    private void CancelEdit()
+    {
+        formModel = new KhoUser();
+        isEdit = false;
+        errorMessage = null;
+    }
+
+    private async Task Delete(int id)
+    {
+
+        var khoUser = await _context.KhoUsers.FindAsync(id);
+        if (khoUser != null)
+        {
+            _context.KhoUsers.Remove(khoUser);
+            await _context.SaveChangesAsync();
+            await LoadData();
+        }
+    }
+
+    private async Task confirmDelete(int id)
+    {
+        if (await JS.InvokeAsync<bool>("confirm", "Bạn có chắc muốn xóa"))
+        {
+            await Delete(id);
+        }
+    }
+}
