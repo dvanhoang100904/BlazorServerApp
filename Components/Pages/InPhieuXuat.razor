@@ -1,0 +1,168 @@
+﻿@page "/in-phieu-xuat/{phieuXuatId:int}"
+@using BlazorServerApp.Models
+@layout PrintLayout
+@inject BlazorServerApp.Data.AppDbContext _context
+@using Microsoft.EntityFrameworkCore
+@using System.Globalization
+
+<h3 class="text-center">Phiếu Xuất Kho</h3>
+<p class="text-center">Ngày @phieuXuat?.NgayXuatKho.ToString("dd/MM/yyyy")</p>
+<p class="text-center"><strong>Số:</strong> @phieuXuat?.SoPhieuXuatKho</p>
+
+@if (phieuXuat != null)
+{
+    <h5>I. Thông tin chung</h5>
+    <ol>
+        <li><strong>Lệnh Giao Hàng:</strong> </li>
+        <li><strong>Cửa Hàng:</strong> </li>
+        <li><strong>Kho:</strong> @phieuXuat.Kho?.TenKho</li>
+        <li><strong>Ghi Chú:</strong> @phieuXuat.GhiChu</li>
+    </ol>
+
+    <h5>II. Thông tin hàng</h5>
+    <table class="table table-bordered">
+        <thead class="table-warning">
+            <tr>
+                <th class="text-center">STT</th>
+                <th class="text-center">Mã Hàng</th>
+                <th class="text-center">Tên Hàng</th>
+                <th class="text-center">PO</th>
+                <th class="text-center">Số Chỉ Lệnh</th>
+                <th class="text-center">SL</th>
+                <th class="text-center">ĐVT</th>
+                <th class="text-center">Kiểm Kê</th>
+                <th class="text-center">Ghi Chú</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var phieuXuatRawData in phieuXuatRawDatas.Select((c, i) => new { c, i }))
+            {
+                <tr>
+                    <td class="text-center">@(phieuXuatRawData.i + 1)</td>
+                    <td class="text-center">@phieuXuatRawData.c.SanPham?.MaSanPham</td>
+                    <td class="text-center">@phieuXuatRawData.c.SanPham?.TenSanPham</td>
+                    <td></td>
+                    <td></td>
+                    <td class="text-center">@phieuXuatRawData.c.SoLuongXuat</td>
+                    <td class="text-center">@phieuXuatRawData.c.SanPham?.DonViTinh?.TenDonViTinh</td>
+                    <td></td>
+                    <td></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <h5>III. Kết luận</h5>
+    <p>1. Tổng số lượng thực xuất (viết bằng số): @tongSoLuong</p>
+    <p>2. Tổng số lượng (viết bằng chữ): @soLuongBangChu</p>
+    <p>3. Mô tả khác biệt:</p>
+    <br />
+
+    <div class="row text-center">
+        <div class="col">Người lập phiếu<br /><br />Ký, họ tên</div>
+        <div class="col">Người nhận hàng<br /><br />Ký, họ tên</div>
+        <div class="col">Điều phối<br /><br />Ký, họ tên</div>
+        <div class="col">Giám đốc<br /><br />Ký, họ tên</div>
+    </div>
+}
+else
+{
+    <p>Loading...</p>
+}
+
+@code {
+    [Parameter]
+    public int phieuXuatId { get; set; }
+
+    private PhieuXuat? phieuXuat;
+    private List<PhieuXuatRawData> phieuXuatRawDatas = new();
+    private int tongSoLuong = 0;
+    private string soLuongBangChu = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        phieuXuat = await _context.PhieuXuats
+            .Include(p => p.Kho)
+            .FirstOrDefaultAsync(p => p.Id == phieuXuatId);
+
+        phieuXuatRawDatas = await _context.PhieuXuatRawDatas
+            .Include(p => p.SanPham)
+            .ThenInclude(d => d.DonViTinh)
+            .Where(p => p.XuatKhoId == phieuXuatId)
+            .ToListAsync();
+
+        tongSoLuong = phieuXuatRawDatas.Sum(p => p.SoLuongXuat);
+
+        soLuongBangChu = ConvertSoLuong(tongSoLuong);
+    }
+
+    private string ConvertSoLuong(int number)
+    {
+        if (number == 0) return "Không";
+
+        string[] unitNumbers = { "không", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín" };
+        string[] placeValues = { "", "nghìn", "triệu", "tỷ" };
+
+        string numberStr = number.ToString();
+        int length = numberStr.Length;
+        int groupCount = (length + 2) / 3;
+
+        numberStr = numberStr.PadLeft(groupCount * 3, '0');
+
+        string result = "";
+        for (int i = 0; i < groupCount; i++)
+        {
+            int groupValue = int.Parse(numberStr.Substring(i * 3, 3));
+            if (groupValue != 0)
+            {
+                int hundreds = groupValue / 100;
+                int tens = (groupValue % 100) / 10;
+                int units = groupValue % 10;
+
+                if (hundreds > 0)
+                    result += unitNumbers[hundreds] + " trăm ";
+                else if (i > 0 && result != "")
+                    result += "không trăm ";
+
+                if (tens > 1)
+                {
+                    result += unitNumbers[tens] + " mươi ";
+                    if (units == 1)
+                        result += "mốt ";
+                    else if (units == 5)
+                        result += "lăm ";
+                    else if (units != 0)
+                        result += unitNumbers[units] + " ";
+                }
+                else if (tens == 1)
+                {
+                    result += "mười ";
+                    if (units == 5)
+                        result += "lăm ";
+                    else if (units != 0)
+                        result += unitNumbers[units] + " ";
+                }
+                else if (tens == 0 && units != 0)
+                {
+                    result += "lẻ " + unitNumbers[units] + " ";
+                }
+
+                result += placeValues[groupCount - i - 1] + " ";
+            }
+        }
+
+        // Xử lý thừa khoảng trắng
+        result = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(result.Trim());
+
+        return result;
+    }
+
+
+  
+
+}

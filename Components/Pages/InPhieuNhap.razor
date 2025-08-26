@@ -1,0 +1,158 @@
+﻿@page "/in-phieu-nhap/{PhieuID:int}"
+@inject BlazorServerApp.Data.AppDbContext _context
+@layout PrintLayout
+@using BlazorServerApp.Models
+@using Microsoft.EntityFrameworkCore
+@using System.Globalization
+
+<h3 class="text-center">Phiếu Nhập Kho</h3>
+
+@if (phieuNhap != null)
+{
+    <p><strong>Đơn Vị:</strong> </p>
+    <p><strong>Bộ Phận:</strong> </p>
+    <p><strong>Ngày Nhập:</strong> @phieuNhap.NgayNhapKho.ToString("dd/MM/yyyy")</p>
+    <p><strong>Số Phiếu Nhập:</strong> @phieuNhap.SoPhieuNhapKho</p>
+    <p><strong>Nhà Cung Cấp:</strong> @phieuNhap.NhaCungCap?.TenNhaCungCap</p>
+    <p><strong>Kho Nhập:</strong> @phieuNhap.Kho?.TenKho</p>
+
+    <table class="table table-bordered">
+        <thead class="table-secondary">
+            <tr>
+                <th class="text-center">STT</th>
+                <th class="text-center">Tên Hàng</th>
+                <th class="text-center">Mã Hàng</th>
+                <th class="text-center">Đơn Vị Tính</th>
+                <th class="text-center">Số Lượng</th>
+                <th class="text-center">Đơn Giá</th>
+                <th class="text-center">Thành Tiền</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var phieuNhapRawData in phieuNhapRawDatas.Select((c, i) => new { c, i }))
+            {
+                <tr>
+                    <td class="text-center">@(phieuNhapRawData.i + 1)</td>
+                    <td class="text-center">@phieuNhapRawData.c.SanPham?.TenSanPham</td>
+                    <td class="text-center">@phieuNhapRawData.c.SanPham?.MaSanPham</td>
+                    <td class="text-center">@phieuNhapRawData.c.SanPham?.DonViTinh?.TenDonViTinh</td>
+                    <td class="text-center">@phieuNhapRawData.c.SoLuongNhap</td>
+                    <td class="text-center">@phieuNhapRawData.c.DonGiaNhap.ToString("N0")</td>
+                    <td class="text-center">@((phieuNhapRawData.c.SoLuongNhap* phieuNhapRawData.c.DonGiaNhap).ToString("N0"))</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <p><strong>Tổng Số Tiền (viết bằng số): @tongTien.ToString("N0")</strong></p>
+    <p><strong>Tổng Số Tiền (viết bằng chữ): @TienBangChu </strong></p>
+
+    <br />
+    <div class="row text-center">
+        <div class="col">Người Lập Phiếu<br /><br />Ký, họ tên</div>
+        <div class="col">Người Giao Hàng<br /><br />Ký, họ tên</div>
+        <div class="col">Thủ Kho<br /><br />Ký, họ tên</div>
+        <div class="col">Kế Toán Trưởng<br /><br />Ký, họ tên</div>
+    </div>
+}
+else
+{
+    <p>Loading...</p>
+}
+
+@code {
+    [Parameter]
+    public int PhieuID { get; set; }
+
+    private PhieuNhap? phieuNhap;
+    private List<PhieuNhapRawData> phieuNhapRawDatas = new();
+    private double tongTien = 0;
+    private string TienBangChu = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        phieuNhap = await _context.PhieuNhaps
+            .Include(k => k.Kho)
+            .Include(n => n.NhaCungCap)
+            .FirstOrDefaultAsync(p => p.Id == PhieuID);
+
+        phieuNhapRawDatas = await _context.PhieuNhapRawDatas
+            .Include(s => s.SanPham)
+            .ThenInclude(d => d.DonViTinh)
+            .Where(c => c.NhapKhoId == PhieuID)
+            .ToListAsync();
+
+        tongTien = phieuNhapRawDatas.Sum(c => c.SoLuongNhap * c.DonGiaNhap);
+        TienBangChu = ConvertTien(tongTien);
+    }
+
+    private static string[] ChuSo = { "không", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín" };
+
+    private string DocHangTram(int number)
+    {
+        int tram = number / 100;
+        int chuc = (number % 100) / 10;
+        int donvi = number % 10;
+        string result = "";
+
+        if (tram != 0)
+        {
+            result += ChuSo[tram] + " trăm";
+            if (chuc == 0 && donvi != 0)
+            {
+                result += " lẻ";
+            }
+        }
+
+        if (chuc != 0 && chuc != 1)
+        {
+            result += " " + ChuSo[chuc] + " mươi";
+            if (donvi == 1)
+                result += " mốt";
+            else if (donvi == 5)
+                result += " lăm";
+            else if (donvi != 0)
+                result += " " + ChuSo[donvi];
+        }
+        else if (chuc == 1)
+        {
+            result += " mười";
+            if (donvi == 5)
+                result += " lăm";
+            else if (donvi != 0)
+                result += " " + ChuSo[donvi];
+        }
+        else if (chuc == 0 && donvi != 0)
+        {
+            result += " " + ChuSo[donvi];
+        }
+
+        return result.Trim();
+    }
+
+    private string ConvertTien(double soTien)
+    {
+        if (soTien == 0) return "Không đồng";
+
+        long[] donvi = { 1_000_000_000, 1_000_000, 1_000, 1 };
+        string[] tenDonVi = { "tỷ", "triệu", "nghìn", "" };
+
+        long so = (long)soTien;
+        string ketQua = "";
+        bool daCoDonVi = false;
+
+        for (int i = 0; i < donvi.Length; i++)
+        {
+            long temp = so / donvi[i];
+            if (temp > 0 || daCoDonVi)
+            {
+                ketQua += DocHangTram((int)temp) + " " + tenDonVi[i] + " ";
+                so %= donvi[i];
+                daCoDonVi = true;
+            }
+        }
+
+        return CultureInfo.CurrentCulture.TextInfo.ToTitleCase(ketQua.Trim() + " đồng");
+    }
+
+}

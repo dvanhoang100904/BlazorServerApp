@@ -1,0 +1,248 @@
+﻿@page "/phieu-xuat"
+@using BlazorServerApp.Models
+@inject BlazorServerApp.Data.AppDbContext _context
+@using Microsoft.EntityFrameworkCore
+@inject IJSRuntime JS
+
+
+<div class="container-fluid p-4">
+    <h3 class="mb-4">Quản Lý Phiếu Xuất</h3>
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-light">
+                    <h5 class="mb-0">Thêm phiếu xuất</h5>
+                </div>
+                <div class="card-body">
+                    <EditForm Model="@formModel" OnValidSubmit="Save">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger">@errorMessage</div>
+                        }
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Số phiếu xuất</label>
+                                <InputText @bind-Value="formModel.SoPhieuXuatKho" class="form-control" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Kho</label>
+                                <InputSelect @bind-Value="formModel.KhoId" class="form-select">
+                                    <option value="0">-- Chọn kho --</option>
+                                    @foreach (var kho in khos)
+                                    {
+                                        <option value="@kho.Id">@kho.TenKho</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Ngày xuất</label>
+                                <InputDate @bind-Value="formModel.NgayXuatKho" class="form-control" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Ghi chú</label>
+                                <InputText @bind-Value="formModel.GhiChu" class="form-control" />
+                            </div>
+                        </div>
+
+                        <hr />
+                        <h5>Chi tiết phiếu xuất</h5>
+                        @foreach (var phieuXuatRawData in phieuXuatRawDatas)
+                        {
+                            <div class="row g-3 mb-2">
+                                <div class="col-md-5">
+                                    <label class="form-label fw-bold">Sản phẩm</label>
+                                    <InputSelect class="form-select" @bind-Value="phieuXuatRawData.SanPhamId">
+                                        <option value="0">-- Chọn sản phẩm --</option>
+                                        @foreach (var sanPham in sanPhams)
+                                        {
+                                            <option value="@sanPham.Id">@sanPham.TenSanPham</option>
+                                        }
+                                    </InputSelect>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label fw-bold">Số lượng xuất</label>
+                                    <InputNumber class="form-control" @bind-Value="phieuXuatRawData.SoLuongXuat" />
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-bold">Đơn giá xuất</label>
+                                    <InputNumber class="form-control" @bind-Value="phieuXuatRawData.DonGiaXuat" />
+                                </div>
+                                <div class="col-md-2 d-flex align-items-end">
+                                    <button class="btn btn-danger" @onclick="() => RemoveDetail(phieuXuatRawData)"> <i class="bi bi-trash fs-6 me-1"></i> Xóa</button>
+                                </div>
+                            </div>
+                        }
+
+                        <button class="btn btn-secondary mt-2" @onclick="AddDetail">+ Thêm dòng</button>
+                        <br />
+                        <button type="submit" class="btn btn-primary mt-3">Lưu phiếu xuất</button>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body p-0">
+                    <table class="table table-hover table-striped mb-0">
+                        <thead class="table-primary">
+                            <tr>
+                                <th>Số phiếu xuất</th>
+                                <th>Kho</th>
+                                <th>Ngày xuất</th>
+                                <th class="text-center" style="width:160px;">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var phieuXuat in phieuXuats)
+                            {
+                                <tr>
+                                    <td>@phieuXuat.SoPhieuXuatKho</td>
+                                    <td>@phieuXuat.Kho?.TenKho</td>
+                                    <td>@phieuXuat.NgayXuatKho.ToString("dd/MM/yyyy")</td>
+                                    <td class="text-center">
+                                        <a href="/in-phieu-xuat/@phieuXuat.Id" target="_blank" class="text-info me-2" title="In Phiếu">
+                                            <i class="bi bi-printer fs-5"></i>
+                                        </a>
+                                        <a href="javascript:void(0)" class="text-danger" title="Xóa" @onclick="() => confirmDelete(phieuXuat.Id)">
+                                            <i class="bi bi-trash fs-5"></i>
+                                        </a>
+                                    </td>
+
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@code {
+    private List<PhieuXuat> phieuXuats = new();
+    private PhieuXuat formModel = new();
+    private List<Kho> khos = new();
+    private List<PhieuXuatRawData> phieuXuatRawDatas = new();
+    private List<SanPham> sanPhams = new();
+
+    private string? errorMessage;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        phieuXuats = await _context.PhieuXuats
+            .Include(k => k.Kho)
+            .ToListAsync();
+        khos = await _context.Khos.ToListAsync();
+        sanPhams = await _context.SanPhams.ToListAsync();
+        phieuXuatRawDatas = new();
+    }
+    private void AddDetail()
+    {
+        phieuXuatRawDatas.Add(new PhieuXuatRawData());
+    }
+
+    private void RemoveDetail(PhieuXuatRawData phieuXuatRawData)
+    {
+        phieuXuatRawDatas.Remove(phieuXuatRawData);
+        StateHasChanged();
+    }
+
+    private async Task Save()
+    {
+        errorMessage = null;
+
+        formModel.SoPhieuXuatKho = formModel.SoPhieuXuatKho?.Trim();
+        if(string.IsNullOrWhiteSpace(formModel.SoPhieuXuatKho) || formModel.KhoId == 0 || formModel.NgayXuatKho == default)
+        {
+            errorMessage = "Số phiếu xuất không được để trống";
+            return;
+        }
+
+        if(formModel.KhoId == 0)
+        {
+            errorMessage = "Phải chọn kho";
+        }
+
+        if(formModel.NgayXuatKho == default)
+        {
+            errorMessage = "Phải chọn ngày xuất";
+        }
+
+        bool isSoPhieuXuatKhoTrung = await _context.PhieuXuats.AnyAsync(p => p.SoPhieuXuatKho == formModel.SoPhieuXuatKho);
+
+        if (isSoPhieuXuatKhoTrung)
+        {
+            errorMessage = "Số phiếu xuất đã tồn tại";
+            return;
+        }
+
+
+        // Validate chi tiết
+        if (phieuXuatRawDatas.Count == 0)
+        {
+            errorMessage = "Phiếu xuất phải có ít nhất một dòng chi tiết.";
+            return;
+        }
+
+        if (phieuXuatRawDatas.Any(p => p.SanPhamId == 0 || p.SoLuongXuat <= 0 || p.DonGiaXuat <= 0))
+        {
+            errorMessage = "Chi tiết phiếu xuất không hợp lệ.";
+            return;
+        }
+
+        _context.PhieuXuats.Add(formModel);
+        await _context.SaveChangesAsync();
+
+        foreach(var phieuXuatRawData in phieuXuatRawDatas)
+        {
+            phieuXuatRawData.Id = 0;
+            phieuXuatRawData.XuatKhoId = formModel.Id;
+            _context.PhieuXuatRawDatas.Add(phieuXuatRawData);
+        }
+
+        await _context.SaveChangesAsync();
+
+        formModel = new PhieuXuat();
+        StateHasChanged();
+        phieuXuatRawDatas.Clear();
+        await LoadData();
+    }
+
+    private async Task Delete(int id)
+    {
+        var phieuXuat = await _context.PhieuXuats.FindAsync(id);
+
+        if(phieuXuat != null)
+        {
+            var phieuXuatRawData = _context.PhieuXuatRawDatas.Where(c => c.XuatKhoId == id);
+            _context.PhieuXuatRawDatas.RemoveRange(phieuXuatRawData);
+            _context.PhieuXuats.Remove(phieuXuat);
+            await _context.SaveChangesAsync();
+            await LoadData();
+        }
+    }
+
+    private async Task confirmDelete(int id)
+    {
+        if (await JS.InvokeAsync<bool>("confirm", "Bạn có chắc muốn xóa"))
+        {
+            await Delete(id);
+        }
+    }
+}
+
+

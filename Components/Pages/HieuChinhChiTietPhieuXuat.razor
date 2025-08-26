@@ -1,0 +1,223 @@
+﻿@page "/hieu-chinh-chi-tiet-phieu-xuat/{PhieuId:int}"
+@using BlazorServerApp.Models
+@using Microsoft.EntityFrameworkCore
+@inject BlazorServerApp.Data.AppDbContext _context
+@inject NavigationManager Navigation
+<div class="container-fluid p-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-light">
+                    <h5 class="mb-0">Hiệu Chỉnh Chi Tiết Phiếu Xuất</h5>
+                </div>
+                <div class="card-body">
+                    @if (xnkPhieuXuat != null)
+                    {
+                      <div class="row g-3 mb-3">                        
+                            <div class="col-md-3">
+                                <strong>Kho:</strong> @xnkPhieuXuat.Kho?.TenKho
+                            </div>
+                        </div>
+                         <div class="row g-3 mb-3">
+                             <div class="col-md-12">
+                                <strong>Số Phiếu Xuất:</strong> @xnkPhieuXuat.SoPhieuXuatKho
+                            </div>
+                          </div>            
+                         <div class="row g-3 mb-4">
+                             <div class="col-md-12">
+                                 <strong>Ngày Xuất:</strong> @xnkPhieuXuat.NgayXuatKho.ToString("dd/MM/yyyy")
+                            </div>
+                          </div>
+
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger">@errorMessage</div>
+                        }
+
+                        <div class="card shadow-sm">
+                            <div class="card-body p-0">
+                                <table class="table table-hover table-striped mb-0">
+                                    <thead class="table-primary">
+                                        <tr class="text-center">
+                                            <th>Mã sản phẩm</th>
+                                            <th>Tên sản phẩm</th>
+                                            <th>Số lượng</th>
+                                            <th>Đơn giá</th>
+                                            <th>Trị giá</th>
+                                            <th>Thao tác</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var phieuXuatRawData in phieuXuatRawDatas)
+                                        {
+                                            <tr>
+                                                <td>@phieuXuatRawData.SanPhamId</td>
+                                                <td>@phieuXuatRawData.SanPham?.TenSanPham</td>
+                                                <td>
+                                                    <InputNumber class="form-control" @bind-Value="phieuXuatRawData.SoLuongXuat" />
+                                                </td>
+                                                <td>
+                                                    <InputNumber class="form-control" @bind-Value="phieuXuatRawData.DonGiaXuat" />
+                                                </td>
+                                                <td>@(phieuXuatRawData.SoLuongXuat * phieuXuatRawData.DonGiaXuat)</td>
+                                                <td class="text-center">
+                                                    <a href="javascript:void(0)" class="text-danger" title="Xóa" @onclick="() => DeleteRow(phieuXuatRawData)">
+                                                        <i class="bi bi-trash fs-5"></i>
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        }
+
+                                        <tr>
+                                            <td>
+                                                <InputSelect class="form-select" @bind-Value="newPhieuXuatRawData.SanPhamId">
+                                                    <option value="0">-- Chọn sản phẩm --</option>
+                                                    @foreach (var sanPham in sanPhams)
+                                                    {
+                                                        <option value="@sanPham.Id">@sanPham.TenSanPham</option>
+                                                    }
+                                                </InputSelect>
+                                            </td>
+                                            <td></td>
+                                            <td>
+                                                <InputNumber class="form-control" @bind-Value="newPhieuXuatRawData.SoLuongXuat" />
+                                            </td>
+                                            <td>
+                                                <InputNumber class="form-control" @bind-Value="newPhieuXuatRawData.DonGiaXuat" />
+                                            </td>
+                                            <td></td>
+                                            <td class="text-center">
+                                                <a href="javascript:void(0)" class="text-success" title="Thêm" @onclick="AddRow">
+                                                    <i class="bi bi-plus-circle fs-5"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                    <tfoot>
+                                        <tr class="fw-bold">
+                                            <td colspan="4" class="text-end">Tổng trị giá:</td>
+                                            <td colspan="2">@phieuXuatRawDatas.Sum(x => x.SoLuongXuat * x.DonGiaXuat).ToString("N0")</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="mt-3">
+                            <button class="btn btn-primary me-2" @onclick="LuuChiTiet">Lưu</button>
+                            <button class="btn btn-secondary" @onclick="Cancel">Hủy</button>
+                        </div>
+                    }
+                    else
+                    {
+                        <p>Loading...</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@code {
+    [Parameter]
+    public int PhieuId { get; set; }
+    private XnkPhieuXuat? xnkPhieuXuat;
+    private List<PhieuXuatRawData> phieuXuatRawDatas = new();
+    private List<SanPham> sanPhams = new();
+    private PhieuXuatRawData newPhieuXuatRawData = new();
+
+    private string? errorMessage;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        xnkPhieuXuat = await _context.XnkPhieuXuats
+            .Include(k => k.Kho)
+            .FirstOrDefaultAsync(x => x.Id == PhieuId);
+
+        phieuXuatRawDatas = await _context.PhieuXuatRawDatas
+            .Where(p => p.XuatKhoId == PhieuId)
+            .Include(s => s.SanPham)
+            .ToListAsync();
+
+        sanPhams = await _context.SanPhams.ToListAsync();
+        newPhieuXuatRawData = new PhieuXuatRawData();
+
+    }
+
+    private void AddRow()
+    {
+        errorMessage = null;
+
+        if (newPhieuXuatRawData.SanPhamId == 0 || newPhieuXuatRawData.SoLuongXuat <= 0 || newPhieuXuatRawData.DonGiaXuat <= 0)
+        {
+            errorMessage = "Vui lòng nhập đầy đủ sản phẩm, số lượng, đơn giá.";
+            return;
+        }
+
+        if (phieuXuatRawDatas.Any(p => p.SanPhamId == newPhieuXuatRawData.SanPhamId))
+        {
+            errorMessage = "Sản phẩm đã tồn tại trong danh sách.";
+            return;
+        }
+
+        // Gắn thông tin sản phẩm
+        newPhieuXuatRawData.XuatKhoId = PhieuId;
+        newPhieuXuatRawData.SanPham = sanPhams.FirstOrDefault(s => s.Id == newPhieuXuatRawData.SanPhamId);
+
+        phieuXuatRawDatas.Add(newPhieuXuatRawData);
+        newPhieuXuatRawData = new PhieuXuatRawData(); // reset
+    }
+
+    private void DeleteRow(PhieuXuatRawData phieuXuatRawData)
+    {
+        phieuXuatRawDatas.Remove(phieuXuatRawData);
+        StateHasChanged();
+    }
+
+    private async Task LuuChiTiet()
+    {
+        errorMessage = null;
+
+        if (phieuXuatRawDatas == null || !phieuXuatRawDatas.Any())
+        {
+            errorMessage = "Danh sách sản phẩm không được để trống.";
+            return;
+        }
+
+        if (phieuXuatRawDatas.Any(p => p.SanPhamId == 0 || p.SoLuongXuat <= 0 || p.DonGiaXuat <= 0))
+        {
+            errorMessage = "Có sản phẩm chưa nhập đủ thông tin (mã, số lượng, đơn giá).";
+            return;
+        }
+
+        var oldphieuXuatRawDatas = await _context.PhieuXuatRawDatas
+            .Where(p => p.XuatKhoId == PhieuId)
+            .ToListAsync();
+
+        _context.PhieuXuatRawDatas.RemoveRange(oldphieuXuatRawDatas);
+        await _context.SaveChangesAsync();
+
+        foreach (var phieuXuatRawData in phieuXuatRawDatas)
+        {
+            phieuXuatRawData.Id = 0;
+            phieuXuatRawData.XuatKhoId = PhieuId; // Gắn lại Id
+            _context.PhieuXuatRawDatas.Add(phieuXuatRawData);
+        }
+
+        await _context.SaveChangesAsync();
+        Cancel();
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/hieu-chinh-phieu-xuat");
+    }
+
+
+}

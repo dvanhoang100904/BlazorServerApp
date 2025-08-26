@@ -1,0 +1,280 @@
+﻿@page "/san-pham"
+@using BlazorServerApp.Models
+@using Microsoft.EntityFrameworkCore
+@inject BlazorServerApp.Data.AppDbContext _context
+@inject IJSRuntime JS
+
+<div class="container-fluid p-4">
+    <h3 class="mb-4">Quản Lý Sản Phẩm</h3>
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-light">
+                    <h5 class="mb-0">@((isEdit) ? "Cập nhật sản phẩm" : "Thêm sản phẩm")</h5>
+                </div>
+                <div class="card-body">
+                    <EditForm Model="@formModel" OnValidSubmit="Save">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger">@errorMessage</div>
+                        }
+
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Mã sản phẩm</label>
+                                <InputText @bind-Value="formModel.MaSanPham" class="form-control" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Tên sản phẩm</label>
+                                <InputText @bind-Value="formModel.TenSanPham" class="form-control" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Loại sản phẩm</label>
+                                <InputSelect @bind-Value="formModel.LoaiSanPhamId" class="form-select">
+                                    <option value="0">-- Chọn loại sản phẩm --</option>
+                                    @foreach (var loaiSanPham in loaiSanPhams)
+                                    {
+                                        <option value="@loaiSanPham.Id">@loaiSanPham.TenLoaiSanPham</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Đơn vị tính</label>
+                                <InputSelect @bind-Value="formModel.DonViTinhId" class="form-select">
+                                    <option value="0">-- Chọn đơn vị tính --</option>
+                                    @foreach (var donViTinh in donViTinhs)
+                                    {
+                                        <option value="@donViTinh.Id">@donViTinh.TenDonViTinh</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label fw-bold">Ghi chú</label>
+                                <InputText @bind-Value="formModel.GhiChu" class="form-control" />
+                            </div>
+                        </div>
+
+                        <div class="mt-3">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save me-1"></i> @((isEdit) ? "Cập nhật" : "Thêm mới")
+                            </button>
+                            @if (isEdit)
+                            {
+                                <button class="btn btn-secondary ms-2" @onclick="CancelEdit">
+                                    <i class="bi bi-x-circle me-1"></i> Hủy
+                                </button>
+                            }
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+
+        </div>
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body p-0">
+                    <table class="table table-hover table-striped mb-0">
+                        <thead class="table-primary">
+                            <tr>
+                                <th>Mã Sản Phẩm</th>
+                                <th>Tên sản phẩm</th>
+                                <th>Loại Sản Phẩm</th>
+                                <th>Đơn vị tính</th>
+                                <th>Ghi chú</th>
+                                <th class="text-center" style="width:120px;">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var sanPham in sanPhams)
+                            {
+                                <tr>
+                                    <td>@sanPham.MaSanPham</td>
+                                    <td>@sanPham.TenSanPham</td>
+                                    <td>@sanPham.LoaiSanPham?.TenLoaiSanPham</td>
+                                    <td>@sanPham.DonViTinh?.TenDonViTinh</td>
+                                    <td>@sanPham.GhiChu</td>
+                                    <td class="text-center">
+                                        <a href="javascript:void(0)"
+                                           class="text-warning me-2"
+                                           title="Sửa"
+                                           @onclick="() => Edit(sanPham)">
+                                            <i class="bi bi-pencil-square fs-5"></i>
+                                        </a>
+                                        <a href="javascript:void(0)"
+                                           class="text-danger"
+                                           title="Xóa"
+                                           @onclick="() => ConfirmDelete(sanPham.Id)">
+                                            <i class="bi bi-trash fs-5"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<SanPham> sanPhams = new();
+    private List<LoaiSanPham> loaiSanPhams = new();
+    private List<DonViTinh> donViTinhs = new();
+    private SanPham formModel = new();
+    private bool isEdit = false;
+    private string? errorMessage;
+
+    // Ham khoi tao khi load component
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    // Load danh sach san pham tu database
+    private async Task LoadData()
+    {
+        sanPhams = await _context.SanPhams
+            .Include(s => s.LoaiSanPham)
+            .Include(s => s.DonViTinh)
+            .OrderBy(s => s.TenSanPham)
+            .ToListAsync();
+
+        donViTinhs = await _context.DonViTinhs.ToListAsync();
+        loaiSanPhams = await _context.LoaiSanPhams.ToListAsync();
+    }
+
+    // Xu ly them moi hoac cap nhat
+    private async Task Save()
+    {
+        errorMessage = null;
+
+        formModel.MaSanPham = formModel.MaSanPham?.Trim();
+        formModel.TenSanPham = formModel.TenSanPham?.Trim();
+
+        if (string.IsNullOrWhiteSpace(formModel.MaSanPham))
+        {
+            errorMessage = "Mã sản phẩm không được để trống.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(formModel.TenSanPham))
+        {
+            errorMessage = "Tên sản phẩm không được để trống.";
+            return;
+        }
+
+        if (formModel.LoaiSanPhamId == 0)
+        {
+            errorMessage = "Phải chọn loại sản phẩm.";
+            return;
+        }
+
+        if (formModel.DonViTinhId == 0)
+        {
+            errorMessage = "Phải chọn đơn vị tính.";
+            return;
+        }
+
+        bool isMaSanPhamTrung = isEdit
+            ? _context.SanPhams.Any(s => s.MaSanPham == formModel.MaSanPham && s.Id != formModel.Id)
+            : _context.SanPhams.Any(s => s.MaSanPham == formModel.MaSanPham);
+
+        if (isMaSanPhamTrung)
+        {
+            errorMessage = "Mã sản phẩm đã tồn tại!";
+            return;
+        }
+
+        if (isEdit)
+        {
+            // Neu dang sua, tim id de cat nhat
+            var sanPham = await _context.SanPhams.FindAsync(formModel.Id);
+            if (sanPham != null)
+            {
+                sanPham.MaSanPham = formModel.MaSanPham;
+                sanPham.TenSanPham = formModel.TenSanPham;
+                sanPham.LoaiSanPhamId = formModel.LoaiSanPhamId;
+                sanPham.DonViTinhId = formModel.DonViTinhId;
+                sanPham.GhiChu = formModel.GhiChu;
+            }
+        }
+        else
+        {
+            // Neu them moi
+            _context.SanPhams.Add(formModel);
+        }
+
+        // Luu thay doi xuong database
+        await _context.SaveChangesAsync();
+
+        // Reset form va trang thai
+        formModel = new SanPham();
+        isEdit = false;
+
+        // Load lai danh sach sau khi cap nhat
+        await LoadData();
+    }
+
+    // Gan du lieu vao form de sua
+    private void Edit(SanPham sanPham)
+    {
+        formModel = new SanPham
+        {
+            Id = sanPham.Id,
+            MaSanPham = sanPham.MaSanPham,
+            TenSanPham = sanPham.TenSanPham,
+            LoaiSanPhamId = sanPham.LoaiSanPhamId,
+            DonViTinhId = sanPham.DonViTinhId,
+            GhiChu = sanPham.GhiChu
+        };
+        isEdit = true;
+        errorMessage = null;
+    }
+
+    // Huy chinh sua va reset form
+    private void CancelEdit()
+    {
+        formModel = new SanPham();
+        isEdit = false;
+        errorMessage = null;
+    }
+
+    // Xoa san pham
+    private async Task Delete(int id)
+    {
+        var isPhieuNhapUsed = await _context.PhieuNhapRawDatas.AnyAsync(p => p.SanPhamId == id);
+        var isPhieuXuatUsed = await _context.PhieuXuatRawDatas.AnyAsync(p => p.SanPhamId == id);
+
+        if (isPhieuNhapUsed)
+        {
+            errorMessage = "Không thể xóa vì sản phẩm đang được sử dụng trong phiếu nhập.";
+            return;
+        }
+
+        if (isPhieuXuatUsed)
+        {
+            errorMessage = "Không thể xóa vì sản phẩm đang được sử dụng trong phiếu xuất.";
+            return;
+        }
+
+        var sanPham = await _context.SanPhams.FindAsync(id);
+        if (sanPham != null)
+        {
+            _context.SanPhams.Remove(sanPham);
+            await _context.SaveChangesAsync();
+            await LoadData();
+        }
+    }
+
+    private async Task ConfirmDelete(int id)
+    {
+        if (await JS.InvokeAsync<bool>("confirm", "Bạn có chắc muốn xóa"))
+        {
+            await Delete(id);
+        }
+    }
+}

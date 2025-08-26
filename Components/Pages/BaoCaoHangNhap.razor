@@ -1,0 +1,105 @@
+﻿@page "/bao-cao-hang-nhap"
+@using BlazorServerApp.Models
+@using Microsoft.EntityFrameworkCore
+@inject BlazorServerApp.Data.AppDbContext _context
+<div class="container-fluid p-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-light">
+                    <h5 class="mb-0">Báo Cáo Chi Tiết Hàng Nhập</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Từ ngày:</label>
+                            <InputDate class="form-control" @bind-Value="tuNgay" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Đến ngày:</label>
+                            <InputDate class="form-control" @bind-Value="denNgay" />
+                        </div>
+                        <div class="col-md-3 align-self-end">
+                            <button class="btn btn-primary" @onclick="TimKiem">Tìm kiếm</button>
+                        </div>
+                    </div>
+
+                    @if (baoCaoHangNhapDTOs != null && baoCaoHangNhapDTOs.Any())
+                    {
+                        <div class="table-responsive mt-4">
+                            <table class="table table-bordered table-striped table-hove">
+                                <thead class="table-primary text-center">
+                                    <tr >
+                                        <th>Ngày nhập</th>
+                                        <th>Số phiếu nhập</th>
+                                        <th>Nhà cung cấp</th>
+                                        <th>Mã sản phẩm</th>
+                                        <th>Tên sản phẩm</th>
+                                        <th>Số lượng nhập</th>
+                                        <th>Đơn giá</th>
+                                        <th>Trị giá</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="text-center">
+                                    @foreach (var baoCaoHangNhapDTO in baoCaoHangNhapDTOs)
+                                    {
+                                        <tr>
+                                            <td>@baoCaoHangNhapDTO.NgayNhap.ToString("dd/MM/yyyy")</td>
+                                            <td>@baoCaoHangNhapDTO.SoPhieuNhap</td>
+                                            <td>@baoCaoHangNhapDTO.NhaCungCap</td>
+                                            <td>@baoCaoHangNhapDTO.MaSanPham</td>
+                                            <td>@baoCaoHangNhapDTO.TenSanPham</td>
+                                            <td>@baoCaoHangNhapDTO.SoLuongNhap</td>
+                                            <td>@baoCaoHangNhapDTO.DonGia.ToString("N0")</td>
+                                            <td>@baoCaoHangNhapDTO.TriGia.ToString("N0")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                                <tfoot>
+                                    <tr class="fw-bold">
+                                        <td colspan="7" class="text-end">Tổng trị giá:</td>
+                                        <td>@baoCaoHangNhapDTOs.Sum(b => b.TriGia).ToString("N0")</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    }
+                    else if (daTim)
+                    {
+                        <p>Không có dữ liệu phù hợp.</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private DateTime tuNgay = DateTime.Today.AddDays(-30);
+    private DateTime denNgay = DateTime.Today;
+    private List<BaoCaoHangNhapDTO> baoCaoHangNhapDTOs = new();
+    private bool daTim = false;
+
+    private async Task TimKiem()
+    {
+        daTim = true;
+        baoCaoHangNhapDTOs = await _context.PhieuNhapRawDatas
+            .Include(p => p.SanPham)
+            .ThenInclude(p => p.DonViTinh)
+            .Include(p => p.PhieuNhap)
+            .ThenInclude(p => p.NhaCungCap)
+            .Where(p => p.PhieuNhap.NgayNhapKho >= tuNgay && p.PhieuNhap.NgayNhapKho <= denNgay)
+            .Select(p => new BaoCaoHangNhapDTO
+            {
+                NgayNhap = p.PhieuNhap.NgayNhapKho,
+                SoPhieuNhap = p.PhieuNhap.SoPhieuNhapKho,
+                NhaCungCap = p.PhieuNhap.NhaCungCap.TenNhaCungCap,
+                MaSanPham = p.SanPham.MaSanPham,
+                TenSanPham = p.SanPham.TenSanPham,
+                SoLuongNhap = p.SoLuongNhap,
+                DonGia = p.DonGiaNhap,
+                TriGia = p.SoLuongNhap * p.DonGiaNhap
+            })
+            .ToListAsync();
+    }
+}

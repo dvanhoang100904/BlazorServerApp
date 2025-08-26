@@ -1,0 +1,97 @@
+﻿@inherits LayoutComponentBase
+
+<header class="tm-header navbar-shadow">
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-gradient px-3">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="mainMenu">
+            <ul class="navbar-nav me-auto align-items-center mainmenu">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle"  data-bs-toggle="dropdown">
+                        <i class="bi bi-display me-1"></i> Dashboard
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li>
+                            <NavLink class="dropdown-item" href="/" Match="NavLinkMatch.All">
+                                Tổng quan
+                            </NavLink>
+                        </li>          
+                    </ul>
+                </li>
+
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
+                        <i class="bi bi-database me-1"></i> Master Data
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><NavLink class="dropdown-item" href="don-vi-tinh">Đơn Vị Tính</NavLink></li>
+                        <li><NavLink class="dropdown-item" href="loai-san-pham">Loại Sản Phẩm</NavLink></li>
+                        <li><NavLink class="dropdown-item" href="san-pham">Sản Phẩm</NavLink></li>
+                        <li><NavLink class="dropdown-item" href="nha-cung-cap">Nhà Cung Cấp</NavLink></li>
+                        <li><NavLink class="dropdown-item" href="kho">Kho</NavLink></li>
+                    </ul>
+                </li>
+
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle"  data-bs-toggle="dropdown">
+                        <i class="bi bi-list-task me-1"></i> Điều phối
+                    </a>
+                </li>
+
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle"  data-bs-toggle="dropdown">
+                        <i class="bi bi-truck me-1"></i> Quản lý đội xe
+                    </a>
+                </li>
+
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle"  data-bs-toggle="dropdown">
+                        <i class="bi bi-cash-stack me-1"></i> Kế toán
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><NavLink class="dropdown-item" href="phieu-nhap">Phiếu Nhập</NavLink></li>                       
+                        <li><NavLink class="dropdown-item" href="hieu-chinh-phieu-nhap">Hiệu Chỉnh Phiếu Nhập</NavLink></li>                            
+                        <li><NavLink class="dropdown-item" href="phieu-xuat">Phiếu Xuất</NavLink></li>        
+                        <li><NavLink class="dropdown-item" href="hieu-chinh-phieu-xuat">Hiệu Chỉnh Phiếu Xuất</NavLink></li>
+                    </ul>
+                </li>
+
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle"  data-bs-toggle="dropdown">
+                        <i class="bi bi-sliders me-1"></i> Tùy chỉnh
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><NavLink class="dropdown-item" href="lich-trinh">Lịch Trình</NavLink></li>
+                    </ul>
+                </li>
+
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle"  data-bs-toggle="dropdown">
+                        <i class="bi bi-clipboard-data me-1"></i> Báo cáo
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><NavLink class="dropdown-item" href="bao-cao-hang-nhap">Báo Cáo Chi Tiết Hàng Nhập</NavLink></li>
+                        <li><NavLink class="dropdown-item" href="bao-cao-hang-xuat">Báo Cáo Chi Tiết Hàng Xuất</NavLink></li>
+                        <li><NavLink class="dropdown-item" href="bao-cao-xuat-nhap-ton">Báo Cáo Xuất Nhập Tồn</NavLink></li>
+                    </ul>
+                </li>
+
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle"  data-bs-toggle="dropdown">
+                        <i class="bi bi-grid-3x3-gap me-1"></i> Quản trị
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><NavLink class="dropdown-item" href="phan-quyen-kho">Phân Quyền Kho</NavLink></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+
+    </nav>
+</header>
+
+<main >
+    @Body
+</main>

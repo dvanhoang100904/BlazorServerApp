@@ -1,0 +1,211 @@
+﻿@page "/hieu-chinh-phieu-nhap"
+@using BlazorServerApp.Models
+@using Microsoft.EntityFrameworkCore
+@inject BlazorServerApp.Data.AppDbContext _context
+@inject IJSRuntime JS
+<div class="container-fluid p-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-light">
+                    <h5 class="mb-0">Hiệu Chỉnh Thông Tin Phiếu Nhập</h5>
+                </div>
+                <div class="card-body">
+                    <EditForm Model="@formModel" OnValidSubmit="Save">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger">@errorMessage</div>
+                        }
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Số phiếu nhập</label>
+                                <InputSelect class="form-select" @bind-Value="formModel.SoPhieuNhapKho">
+                                    <option value="">-- Chọn số phiếu nhập --</option>
+                                    @foreach (var phieu in soPhieuGoc)
+                                    {
+                                        <option value="@phieu">@phieu</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Kho</label>
+                                <InputSelect class="form-select" @bind-Value="formModel.KhoId">
+                                    <option value="0">-- Chọn kho --</option>
+                                    @foreach (var kho in khos)
+                                    {
+                                        <option value="@kho.Id">@kho.TenKho</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Nhà cung cấp</label>
+                                <InputSelect class="form-select" @bind-Value="formModel.NhaCungCapId">
+                                    <option value="0">-- Chọn nhà cung cấp --</option>
+                                    @foreach (var nhaCungCap in nhaCungCaps)
+                                    {
+                                        <option value="@nhaCungCap.Id">@nhaCungCap.TenNhaCungCap</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Ngày nhập</label>
+                                <InputDate @bind-Value="formModel.NgayNhapKho" class="form-control" />
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary mt-2">Tạo hiệu chỉnh</button>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body p-0">
+                    <table class="table table-hover table-striped mb-0">
+                        <thead class="table-primary">
+                            <tr>
+                                <th>Số phiếu nhập</th>
+                                <th>Kho</th>
+                                <th>Nhà cung cấp</th>
+                                <th>Ngày nhập</th>
+                                <th class="text-center" style="width:160px;">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var xnkPhieuNhap in xnkPhieuNhaps)
+                            {
+                                <tr>
+                                    <td>@xnkPhieuNhap.SoPhieuNhapKho</td>
+                                    <td>@xnkPhieuNhap.Kho?.TenKho</td>
+                                    <td>@xnkPhieuNhap.NhaCungCap?.TenNhaCungCap</td>
+                                    <td>@xnkPhieuNhap.NgayNhapKho.ToString("dd/MM/yyyy")</td>
+                                    <td class="text-center">
+                                        <a href="/hieu-chinh-chi-tiet-phieu-nhap/@xnkPhieuNhap.Id" class="text-secondary me-2" title="Hiệu chỉnh">
+                                            <i class="bi bi-pencil-square fs-5"></i>
+                                        </a>
+                                        <a href="javascript:void(0)" class="text-danger" title="Xóa" @onclick="() => confirmDelete(xnkPhieuNhap.Id)">
+                                            <i class="bi bi-trash fs-5"></i>
+                                        </a>
+                                    </td>
+
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<XnkPhieuNhap> xnkPhieuNhaps = new();
+    private XnkPhieuNhap formModel = new();
+    private List<Kho> khos = new();
+    private List<NhaCungCap> nhaCungCaps = new();
+    private string? errorMessage;
+    private List<string> soPhieuGoc = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        xnkPhieuNhaps = await _context.XnkPhieuNhaps
+            .Include(x => x.Kho)
+            .Include(x => x.NhaCungCap)
+            .ToListAsync();
+        khos = await _context.Khos.ToListAsync();
+        nhaCungCaps = await _context.NhaCungCaps.ToListAsync();
+        soPhieuGoc = await _context.PhieuNhaps
+            .Select(p => p.SoPhieuNhapKho)
+            .Distinct()
+            .ToListAsync();
+
+    }
+
+    private async Task Save()
+    {
+        errorMessage = null;
+
+        formModel.SoPhieuNhapKho = formModel.SoPhieuNhapKho?.Trim();
+
+        if (string.IsNullOrWhiteSpace(formModel.SoPhieuNhapKho))
+        {
+            errorMessage = "Số phiếu nhập không được để trống";
+            return;
+        }
+
+        if (formModel.KhoId == 0)
+        {
+            errorMessage = "Phải chọn kho.";
+            return;
+        }
+
+        if (formModel.NhaCungCapId == 0)
+        {
+            errorMessage = "Phải chọn nhà cung cấp.";
+            return;
+        }
+
+        if (formModel.NgayNhapKho == default)
+        {
+            errorMessage = "Phải chọn ngày nhập.";
+            return;
+        }
+
+        // Kiểm tra số phiếu có tồn tại trong bảng gốc không
+        bool tonTaiPhieuGoc = await _context.PhieuNhaps
+            .AnyAsync(p => p.SoPhieuNhapKho == formModel.SoPhieuNhapKho);
+
+        if (!tonTaiPhieuGoc)
+        {
+            errorMessage = "Không tìm thấy phiếu nhập gốc để hiệu chỉnh.";
+            return;
+        }
+
+        bool isSoPhieuNhapKhoTrung = await _context.XnkPhieuNhaps
+            .AnyAsync(x => x.SoPhieuNhapKho.Trim() == formModel.SoPhieuNhapKho);
+
+        if (isSoPhieuNhapKhoTrung)
+        {
+            errorMessage = "Số phiếu nhập đã tồn tại!";
+            return;
+        }
+        _context.XnkPhieuNhaps.Add(formModel);
+        await _context.SaveChangesAsync();
+
+        formModel = new XnkPhieuNhap();
+        await LoadData();
+    }
+
+    private async Task Delete(int id)
+    {
+        var xnkPhieuNhap = await _context.XnkPhieuNhaps.FindAsync(id);
+        if (xnkPhieuNhap != null)
+        {
+            _context.XnkPhieuNhaps.Remove(xnkPhieuNhap);
+            await _context.SaveChangesAsync();
+            await LoadData();
+        }
+    }
+
+    private async Task confirmDelete(int id)
+    {
+        if (await JS.InvokeAsync<bool>("confirm", "Bạn có chắc muốn xóa"))
+        {
+            await Delete(id);
+        }
+    }
+
+}

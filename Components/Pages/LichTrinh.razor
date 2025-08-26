@@ -1,0 +1,1247 @@
+﻿@page "/lich-trinh"
+@inject IJSRuntime JS
+
+<style>
+
+    /********************timeline********************/
+    :root {
+        /* --header-height: 39px; */
+        --header-height: 35px;
+        --row-height: 86px;
+    }
+
+    /********************stat row********************/
+    .stat-row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 8px 8px;
+        background-color: #f8f9fa60;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+        overflow-x: auto;
+    }
+
+    .stat-box {
+        padding: 2px 12px;
+        border-radius: 6px;
+        min-width: 100px;
+        flex-shrink: 0;
+    }
+
+        .stat-box strong {
+            display: block;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #212529;
+        }
+
+        .stat-box span {
+            font-size: 0.75rem;
+            color: #737a80;
+            font-weight: 600;
+            display: block;
+        }
+
+    .search-col {
+        display: flex;
+        align-items: center;
+    }
+
+    .input-group {
+        display: flex;
+        align-items: center;
+        border: 1px solid #acb0b560;
+        border-radius: 1px;
+        background-color: #71818d35;
+        border: none;
+        opacity: 0.6;
+    }
+
+        .input-group i {
+            color: #68727cad;
+            margin: 0 8px;
+        }
+
+        .input-group .form-control {
+            border: none;
+            outline: none;
+            width: 240px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            opacity: 0.7;
+            background-color: transparent;
+        }
+
+    /********************timeline container********************/
+    .timeline-container {
+        margin: 0 auto;
+        border: 1px solid #ddd;
+        background-color: #fff;
+        overflow: hidden;
+    }
+
+    /********************timeline wrapper********************/
+    .timeline-wrapper {
+        display: flex;
+        overflow: auto;
+        max-height: calc(100vh - 35px);
+        align-items: stretch;
+    }
+
+    /********************column left********************/
+    .column-left {
+        width: 232px;
+        flex-shrink: 0;
+        background-color: #f9f9f9;
+        position: sticky;
+        left: 0;
+        z-index: 10;
+        border-right: 1px solid #ddd;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    /********************left header********************/
+    .left-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: sticky;
+        top: 0;
+        z-index: 9;
+        height: var(--header-height);
+        padding: 10px;
+        font-weight: bold;
+        border-bottom: 1px solid #ddd;
+        border-right: 1px solid #ddd;
+        background-color: #f3f3f3;
+    }
+
+        .left-header .filled {
+            font-size: 13px;
+            font-weight: 600;
+            opacity: 0.4;
+            margin-right: 2px;
+        }
+
+    /********************left content********************/
+    .left-content {
+        display: flex;
+        flex-direction: column;
+        background: repeating-linear-gradient( to bottom, transparent 0px, transparent calc(var(--row-height) - 1px), #ddd var(--row-height) );
+    }
+
+    .group-name {
+        padding: 0px;
+        font-weight: bold;
+        border-right: 1px solid #ddd;
+        display: flex;
+        align-items: center;
+        height: var(--row-height);
+        box-sizing: border-box;
+    }
+
+        .group-name.active {
+            background-color: #ffff0019;
+        }
+
+    .container {
+        display: grid;
+        grid-template-columns: auto 0fr;
+        align-items: flex-start;
+        gap: 5px;
+        padding: 0 0;
+    }
+
+    /********************left section********************/
+    .left-section {
+        display: flex;
+        align-items: center;
+        flex-direction: row;
+        gap: 1px;
+        margin-left: 10px;
+    }
+
+    .custom-checkbox {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+        .custom-checkbox input {
+            display: none;
+        }
+
+        .custom-checkbox label {
+            width: 15px;
+            height: 15px;
+            border: 2px solid #cccccc87;
+            display: inline-block;
+            border-radius: 2px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .custom-checkbox span {
+            font-weight: 600;
+            font-size: 15px;
+            color: #000000e0;
+        }
+
+        .custom-checkbox label::after {
+            content: "";
+            position: absolute;
+            display: none;
+        }
+
+        .custom-checkbox input:checked + label::after {
+            display: block;
+            left: 3px;
+            bottom: 3px;
+            width: 5px;
+            height: 9px;
+            border: solid #0db70d;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+
+    .tour-info {
+        margin-left: 14px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        line-height: 1.4;
+    }
+
+    .code {
+        font-weight: 600;
+        font-size: 17px;
+        color: #000000da;
+    }
+
+    .code-sub {
+        font-weight: 600;
+        font-size: 13px;
+        color: #00000072;
+        background-color: rgba(204, 200, 200, 0.318);
+        margin-top: 5px;
+        padding: 1px 5px;
+        width: 71px;
+    }
+
+    /********************right section********************/
+    .right-section {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        margin-right: 16px;
+    }
+
+    .arrow-box-right,
+    .arrow-box {
+        background-color: rgba(204, 200, 200, 0.259);
+        margin-bottom: 2px;
+        position: relative;
+        font-weight: bold;
+        width: 107px;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 3px;
+    }
+
+    .progress {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        background-color: #28a745;
+        z-index: 0;
+    }
+
+    .arrow-box-right span,
+    .arrow-box span {
+        position: relative;
+        z-index: 1;
+        font-size: 12px;
+        font-weight: 700;
+        opacity: 0.7;
+    }
+
+    .labels {
+        display: flex;
+        gap: 3px;
+        margin-top: 4px;
+    }
+
+    .label {
+        background-color: #42a0e4;
+        color: white;
+        padding: 1px 5px;
+        margin-left: 3px;
+        font-size: 10px;
+        font-weight: bold;
+    }
+
+    /********************column right********************/
+    .column-right {
+        flex: 1;
+        min-height: 100%;
+    }
+
+    /********************timeline header********************/
+    .timeline-header {
+        position: sticky;
+        top: 0;
+        background-color: #fff;
+        z-index: 9;
+    }
+
+    .time-slots {
+        display: flex;
+        width: 2640px;
+        background-color: #f3f3f3;
+        border-bottom: 1px solid #b9b5b556;
+        height: var(--header-height);
+    }
+
+    .time-slot {
+        width: 110px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-shrink: 0;
+        border: 0;
+        font-weight: 500;
+        opacity: 0.5;
+    }
+
+    /********************timeline content********************/
+    .timeline-content {
+        display: flex;
+        flex-direction: column;
+        width: 2640px;
+        background: repeating-linear-gradient( to bottom, transparent 0px, transparent calc(var(--row-height) - 1px), #ddd var(--row-height) ), repeating-linear-gradient( to right, transparent 0px, transparent 109px, #ddd 110px );
+        background-position-x: 55px;
+    }
+
+    .group {
+        height: var(--row-height);
+        position: relative;
+    }
+
+        .group.active {
+            background-color: #ffff0017;
+        }
+
+    .bg-timeline-blue::before,
+    .bg-timeline-purple::before,
+    .bg-timeline-green::before,
+    .bg-timeline-gray::before,
+    .bg-timeline-brown::before,
+    .bg-timeline-indigo::before,
+    .bg-timeline-rose::before {
+        content: "";
+        position: absolute;
+        left: 39.58%;
+        right: 22.92%;
+        top: 50%;
+        transform: translateY(-50%);
+        height: 45%;
+        z-index: 0;
+        border-radius: 2px;
+    }
+
+    .bg-timeline-blue::before {
+        background-color: #5baeff;
+    }
+
+    .bg-timeline-purple::before {
+        background-color: #a678b1;
+    }
+
+    .bg-timeline-green::before {
+        background-color: #68bfa6;
+    }
+
+    .bg-timeline-gray::before {
+        background-color: #606060;
+    }
+
+    .bg-timeline-brown::before {
+        background-color: #8b4e4e;
+    }
+
+    .bg-timeline-indigo::before {
+        background-color: #4c73e5;
+    }
+
+    .bg-timeline-rose::before {
+        background-color: #af7071;
+    }
+
+    .group:last-child {
+        border-bottom: 1px solid #ddd;
+    }
+
+    .events {
+        position: relative;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        --line-left: 0%;
+        --line-width: 100%;
+    }
+
+        .events .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .events::before {
+            content: "";
+            position: absolute;
+            top: 50%;
+            /* left: 39.58%;
+      width: calc(100% - 62.5%); */
+            left: var(--line-left);
+            width: var(--line-width);
+            height: 4px;
+            transform: translateY(-50%);
+            z-index: 0;
+            opacity: 0.4;
+        }
+
+    .bg-timeline-blue .events::before {
+        background-color: #1976d2;
+    }
+
+    .bg-timeline-purple .events::before {
+        background-color: #6a1b9a;
+    }
+
+    .bg-timeline-green .events::before {
+        background-color: #2c592e;
+    }
+
+    .bg-timeline-gray .events::before {
+        background-color: #424242;
+    }
+
+    .bg-timeline-brown .events::before {
+        background-color: #5d4037;
+    }
+
+    .bg-timeline-indigo .events::before {
+        background-color: #283593;
+    }
+
+    .bg-timeline-rose .events::before {
+        background-color: #764a4a;
+    }
+
+    .event {
+        position: absolute;
+        z-index: 2;
+        height: 20px;
+        width: 20px;
+        background-color: #fff;
+        color: #000;
+        padding: 4px 17px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        border-radius: 2px;
+        font-weight: 700;
+    }
+
+        .event.icon {
+            padding: 0;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+    .event-blue .event {
+        color: #5baeff;
+    }
+
+    .event-purple .event {
+        color: #a678b1;
+    }
+
+    .event-green .event {
+        color: #68bfa6;
+    }
+
+    .event-gray .event {
+        color: #606060;
+    }
+
+    .event-brown .event {
+        color: #8b4e4e;
+    }
+
+    .event-indigo .event {
+        color: #4c73e5;
+    }
+
+    .event-rose .event {
+        color: #af7071;
+    }
+
+    .event-blue .event:hover {
+        color: #fff;
+        background-color: #5baeff;
+        cursor: pointer;
+    }
+
+    .event-purple .event:hover {
+        color: #fff;
+        background-color: #a678b1;
+        cursor: pointer;
+    }
+
+    .event-green .event:hover {
+        color: #fff;
+        background-color: #68bfa6;
+        cursor: pointer;
+    }
+
+    .event-gray .event:hover {
+        color: #fff;
+        background-color: #606060;
+        cursor: pointer;
+    }
+
+    .event-brown .event:hover {
+        color: #fff;
+        background-color: #8b4e4e;
+        cursor: pointer;
+    }
+
+    .event-indigo .event:hover {
+        color: #fff;
+        background-color: #4c73e5;
+        cursor: pointer;
+    }
+
+    .event-rose .event:hover {
+        color: #fff;
+        background-color: #af7071;
+        cursor: pointer;
+    }
+
+    .event span {
+        font-size: 12px;
+    }
+
+    .event-labels {
+        display: flex;
+        gap: 3px;
+        margin-top: 2px;
+    }
+
+        .event-labels .label {
+            background-color: red;
+            color: white;
+            padding: 1px 5px;
+            font-size: 9px;
+            font-weight: bold;
+        }
+
+    /********************map********************/
+    #map {
+        height: 100%;
+    }
+
+</style>
+
+<div class="row g-1" style="margin-top: 0px">
+    <div class="col-xl-8">
+        <!-- stat row -->
+        <div class="stat-row d-flex align-items-center mb-1">
+            <!-- stat box -->
+            <div class="stat-box">
+                <strong>40/40</strong>
+                <span>TASKS PLANNED</span>
+            </div>
+            <div class="stat-box">
+                <strong>10/10</strong>
+                <span>VEHICLES USED</span>
+            </div>
+            <div class="stat-box">
+                <strong>00/00</strong>
+                <span>VOLUME PACKED</span>
+            </div>
+            <div class="stat-box">
+                <strong>269 KMS</strong>
+                <span>TOTAL DISTANCE</span>
+            </div>
+            <div class="stat-box">
+                <strong>22 HRS</strong>
+                <span>TRAVEL TIME</span>
+            </div>
+            <!-- search -->
+            <div class="search-col">
+                <div class="input-group">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text"
+                           class="form-control"
+                           placeholder="Search tasks by ID, address..." />
+                </div>
+            </div>
+        </div>
+
+        <!-- timeline container -->
+        <div class="timeline-container">
+            <div class="timeline-wrapper">
+                <!-- LEFT COLUMN -->
+                <div class="column-left">
+                    <!-- left header -->
+                    <div class="left-header">
+                        <div class="check-vehicles">
+                            <div class="custom-checkbox">
+                                <input type="checkbox" id="cb" class="tour-checkbox" />
+                                <label for="cb" style="margin-right: 14px"></label>
+                                <span> VEHICLES</span>
+                            </div>
+                        </div>
+                        <div class="filled">00% filled</div>
+                    </div>
+                    <!-- left content-->
+                    <div class="left-content">
+                        <!-- group 1 -->
+                        <div class="group-name" data-group="1">
+                            <div class="container">
+                                <!-- left section -->
+                                <div class="left-section">
+                                    <div class="custom-checkbox">
+                                        <input type="checkbox"
+                                               id="cb1"
+                                               class="tour-checkbox"
+                                               data-group="1" />
+                                        <label for="cb1"></label>
+                                    </div>
+                                    <div class="tour-info">
+                                        <span class="code">TOUR-1</span>
+                                        <span class="code-sub">00% filled</span>
+                                    </div>
+                                </div>
+                                <!-- right section -->
+                                <div class="right-section">
+                                    <div class="arrow-box">
+                                        <!-- <div class="progress" style="width: 0%"></div> -->
+                                        <span class="text-dark">FIELD EXECUTI...</span>
+                                    </div>
+                                    <div class="labels">
+                                        <span class="label">5</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- group 2 -->
+                        <div class="group-name" data-group="2">
+                            <div class="container">
+                                <div class="left-section">
+                                    <div class="custom-checkbox">
+                                        <input type="checkbox"
+                                               id="cb2"
+                                               class="tour-checkbox"
+                                               data-group="2" />
+                                        <label for="cb2"></label>
+                                    </div>
+                                    <div class="tour-info">
+                                        <span class="code">TOUR-2</span>
+                                        <span class="code-sub">00% filled</span>
+                                    </div>
+                                </div>
+                                <div class="right-section">
+                                    <div class="arrow-box">
+                                        <!-- <div class="progress" style="width: 0%"></div> -->
+                                        <span class="text-dark">FIELD EXECUTI...</span>
+                                    </div>
+                                    <div class="labels">
+                                        <span class="label">5</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- group 3 -->
+                        <div class="group-name" data-group="3">
+                            <div class="container">
+                                <div class="left-section">
+                                    <div class="custom-checkbox">
+                                        <input type="checkbox"
+                                               id="cb3"
+                                               class="tour-checkbox"
+                                               data-group="3" />
+                                        <label for="cb3"></label>
+                                    </div>
+                                    <div class="tour-info">
+                                        <span class="code">TOUR-3</span>
+                                        <span class="code-sub">00% filled</span>
+                                    </div>
+                                </div>
+                                <div class="right-section">
+                                    <div class="arrow-box">
+                                        <!-- <div class="progress" style="width: 0%"></div> -->
+                                        <span class="text-dark">FIELD EXECUTI...</span>
+                                    </div>
+                                    <div class="labels">
+                                        <span class="label">3</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- group 4-->
+                        <div class="group-name" data-group="4">
+                            <div class="container">
+                                <div class="left-section">
+                                    <div class="custom-checkbox">
+                                        <input type="checkbox"
+                                               id="cb4"
+                                               class="tour-checkbox"
+                                               data-group="4" />
+                                        <label for="cb4"></label>
+                                    </div>
+
+                                    <div class="tour-info">
+                                        <span class="code">TOUR-4</span>
+                                        <span class="code-sub">00% filled</span>
+                                    </div>
+                                </div>
+                                <div class="right-section">
+                                    <div class="arrow-box">
+                                        <!-- <div class="progress" style="width: 0%"></div> -->
+                                        <span class="text-dark">FIELD EXECUTI...</span>
+                                    </div>
+                                    <div class="labels">
+                                        <span class="label">5</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- group 5 -->
+                        <div class="group-name" data-group="5">
+                            <div class="container">
+                                <div class="left-section">
+                                    <div class="custom-checkbox">
+                                        <input type="checkbox"
+                                               id="cb5"
+                                               class="tour-checkbox"
+                                               data-group="5" />
+                                        <label for="cb5"></label>
+                                    </div>
+                                    <div class="tour-info">
+                                        <span class="code">TOUR-5</span>
+                                        <span class="code-sub">00% filled</span>
+                                    </div>
+                                </div>
+                                <div class="right-section">
+                                    <div class="arrow-box">
+                                        <!-- <div class="progress" style="width: 0%"></div> -->
+                                        <span class="text-dark">FIELD EXECUTI...</span>
+                                    </div>
+                                    <div class="labels">
+                                        <span class="label">3</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- group 6 -->
+                        <div class="group-name" data-group="6">
+                            <div class="container">
+                                <div class="left-section">
+                                    <div class="custom-checkbox">
+                                        <input type="checkbox"
+                                               id="cb6"
+                                               class="tour-checkbox"
+                                               data-group="6" />
+                                        <label for="cb6"></label>
+                                    </div>
+                                    <div class="tour-info">
+                                        <span class="code">TOUR-6</span>
+                                        <span class="code-sub">00% filled</span>
+                                    </div>
+                                </div>
+                                <div class="right-section">
+                                    <div class="arrow-box">
+                                        <!-- <div class="progress" style="width: 0%"></div> -->
+                                        <span class="text-dark">FIELD EXECUTI...</span>
+                                    </div>
+                                    <div class="labels">
+                                        <span class="label">3</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- group 7 -->
+                        <div class="group-name" data-group="7">
+                            <div class="container">
+                                <div class="left-section">
+                                    <div class="custom-checkbox">
+                                        <input type="checkbox"
+                                               id="cb7"
+                                               class="tour-checkbox"
+                                               data-group="7" />
+                                        <label for="cb7"></label>
+                                    </div>
+                                    <div class="tour-info">
+                                        <span class="code">TOUR-7</span>
+                                        <span class="code-sub">00% filled</span>
+                                    </div>
+                                </div>
+                                <div class="right-section">
+                                    <div class="arrow-box">
+                                        <!-- <div class="progress" style="width: 0%"></div> -->
+                                        <span class="text-dark">FIELD EXECUTI...</span>
+                                    </div>
+                                    <div class="labels">
+                                        <span class="label">4</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- group 8 -->
+                        <div class="group-name" data-group="8">
+                            <div class="container">
+                                <div class="left-section">
+                                    <div class="custom-checkbox">
+                                        <input type="checkbox"
+                                               id="cb8"
+                                               class="tour-checkbox"
+                                               data-group="8" />
+                                        <label for="cb8"></label>
+                                    </div>
+                                    <div class="tour-info">
+                                        <span class="code">TOUR-8</span>
+                                        <span class="code-sub">00% filled</span>
+                                    </div>
+                                </div>
+                                <div class="right-section">
+                                    <div class="arrow-box">
+                                        <!-- <div class="progress" style="width: 0%"></div> -->
+                                        <span class="text-dark">FIELD EXECUTI...</span>
+                                    </div>
+                                    <div class="labels">
+                                        <span class="label">2</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN -->
+                <div class="column-right">
+                    <!-- timeline header -->
+                    <div class="timeline-header">
+                        <div class="time-slots">
+                            @for (int i = 0; i < 24; i++)
+                            {
+                                var hour12 = (i % 12 == 0) ? 12 : (i % 12);
+                                var suffix = (i < 12) ? "AM" : "PM";
+                                <div class="time-slot">@hour12:00 @suffix</div>
+                            }
+                        </div>
+                    </div>
+                    <!-- timeline content -->
+                    <div class="timeline-content">
+                        <!-- group 1 -->
+                        <div class="group bg-timeline-blue" data-group="1">
+                            <div class="events event-blue">
+                                <div class="event icon" data-start="09:30" data-end="10:00">
+                                    <span><i class="fa-solid fa-flag"></i></span>
+                                </div>
+
+                                <div class="event" data-start="10:05" data-end="11:00">
+                                    <span>1</span>
+                                </div>
+                                <div class="event" data-start="10:55" data-end="12:00">
+                                    <span>2</span>
+                                </div>
+                                <div class="event" data-start="11:40" data-end="12:00">
+                                    <span>3</span>
+                                </div>
+                                <div class="event" data-start="12:03" data-end="13:00">
+                                    <span>4</span>
+                                </div>
+                                <div class="event" data-start="12:35" data-end="13:00">
+                                    <span>5</span>
+                                </div>
+                                <div class="event icon" data-start="13:05" data-end="14:00">
+                                    <span><i class="fa-solid fa-location-dot"></i></span>
+                                </div>
+                                <div class="overlay"></div>
+                            </div>
+                        </div>
+
+                        <!-- group 2 -->
+                        <div class="group" data-group="2">
+                            <div class="events"></div>
+                            <div class="overlay"></div>
+                        </div>
+
+                        <!-- group 3 -->
+                        <div class="group bg-timeline-purple" data-group="3">
+                            <div class="events event-purple">
+                                <div class="event icon" data-start="09:10" data-end="10:00">
+                                    <span><i class="fa-solid fa-flag"></i></span>
+                                </div>
+                                <div class="event" data-start="10:05" data-end="11:00">
+                                    <span>1</span>
+                                    <!-- <div class="event-labels">
+                                      <span class="label">Hot</span>
+                                    </div> -->
+                                </div>
+                                <div class="event" data-start="11:00" data-end="12:00">
+                                    <span>2</span>
+                                </div>
+                                <div class="event" data-start="12:00" data-end="13:00">
+                                    <span>3</span>
+                                </div>
+                                <div class="event icon" data-start="12:35" data-end="13:00">
+                                    <span>
+                                        <span><i class="fa-solid fa-location-dot"></i></span>
+                                    </span>
+                                </div>
+                                <div class="overlay"></div>
+                            </div>
+                        </div>
+
+                        <!-- group 4 -->
+                        <div class="group bg-timeline-green" data-group="4">
+                            <div class="events event-green">
+                                <div class="event icon" data-start="09:00" data-end="10:00">
+                                    <span><i class="fa-solid fa-flag"></i></span>
+                                </div>
+                                <div class="event" data-start="10:10" data-end="11:00">
+                                    <span>1</span>
+                                    <!-- <div class="event-labels">
+                                      <span class="label">Hot</span>
+                                    </div> -->
+                                </div>
+                                <div class="event" data-start="10:55" data-end="11:00">
+                                    <span>2</span>
+                                </div>
+                                <div class="event" data-start="11:18" data-end="12:00">
+                                    <span>3</span>
+                                </div>
+                                <div class="event" data-start="11:46" data-end="13:00">
+                                    <span>4</span>
+                                </div>
+                                <div class="event" data-start="12:16" data-end="13:00">
+                                    <span>5</span>
+                                </div>
+                                <div class="event icon" data-start="12:55" data-end="13:00">
+                                    <span><i class="fa-solid fa-location-dot"></i></span>
+                                </div>
+                                <div class="overlay"></div>
+                            </div>
+                        </div>
+
+                        <!-- group 5 -->
+                        <div class="group bg-timeline-gray" data-group="5">
+                            <div class="events event-gray">
+                                <div class="event icon" data-start="09:35" data-end="10:00">
+                                    <span><i class="fa-solid fa-flag"></i></span>
+                                </div>
+                                <div class="event" data-start="10:05" data-end="11:00">
+                                    <span>1</span>
+                                </div>
+                                <div class="event" data-start="11:05" data-end="12:00">
+                                    <span>2</span>
+                                </div>
+                                <div class="event" data-start="11:25" data-end="12:00">
+                                    <span>3</span>
+                                </div>
+
+                                <div class="event icon" data-start="12:10" data-end="01:00">
+                                    <span><i class="fa-solid fa-location-dot"></i></span>
+                                </div>
+                                <div class="overlay"></div>
+                            </div>
+                        </div>
+
+                        <!-- group 6 -->
+                        <div class="group bg-timeline-brown" data-group="6">
+                            <div class="events event-brown">
+                                <div class="event icon" data-start="9:35" data-end="10:00">
+                                    <span><i class="fa-solid fa-flag"></i></span>
+                                </div>
+                                <div class="event" data-start="10:05" data-end="11:00">
+                                    <span>1</span>
+                                    <!-- <div class="event-labels">
+                                      <span class="label">Hot</span>
+                                    </div> -->
+                                </div>
+                                <div class="event" data-start="11:10" data-end="12:00">
+                                    <span>2</span>
+                                </div>
+                                <div class="event" data-start="12:10" data-end="01:00">
+                                    <span>3</span>
+                                </div>
+                                <div class="event icon" data-start="13:10" data-end="2:00">
+                                    <span><i class="fa-solid fa-location-dot"></i></span>
+                                </div>
+                                <div class="overlay"></div>
+                            </div>
+                        </div>
+
+                        <!-- group 7 -->
+                        <div class="group bg-timeline-indigo" data-group="7">
+                            <div class="events event-indigo">
+                                <div class="event icon" data-start="09:45" data-end="10:00">
+                                    <span><i class="fa-solid fa-flag"></i></span>
+                                </div>
+                                <div class="event" data-start="10:05" data-end="11:00">
+                                    <span>1</span>
+                                </div>
+                                <div class="event" data-start="10:25" data-end="11:00">
+                                    <span>2</span>
+                                </div>
+                                <div class="event" data-start="11:05" data-end="12:00">
+                                    <span>3</span>
+                                </div>
+                                <div class="event" data-start="11:55" data-end="12:00">
+                                    <span>4</span>
+                                </div>
+                                <div class="event icon" data-start="12:40" data-end="13:00">
+                                    <span><i class="fa-solid fa-location-dot"></i></span>
+                                </div>
+                                <div class="overlay"></div>
+                            </div>
+                        </div>
+
+                        <!-- group 8 -->
+                        <div class="group bg-timeline-rose" data-group="8">
+                            <div class="events event-rose">
+                                <div class="event icon" data-start="09:40" data-end="10:00">
+                                    <span><i class="fa-solid fa-flag"></i></span>
+                                </div>
+                                <div class="event" data-start="10:05" data-end="11:00">
+                                    <span>1</span>
+                                </div>
+                                <div class="event" data-start="10:40" data-end="11:00">
+                                    <span>2</span>
+                                </div>
+                                <div class="event icon" data-start="11:05" data-end="12:00">
+                                    <span>
+                                        <span><i class="fa-solid fa-location-dot"></i></span>
+                                    </span>
+                                </div>
+                                <div class="overlay"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4">
+        <!-- map -->
+        <div id="map"></div>
+    </div>
+</div>
+<script>
+     /*************************timeline event*************************/
+    window.initTimeline = function () {
+    // tổng chiều rộng
+    const timelineWidthPx = 2640;
+    // chiều rồng mỗi giờ
+    const hourWidthPx = 110;
+    // offset do background-position-x
+    const offsetPx = 55;
+    // chiều rộng mỗi phút
+    const minuteWidthPx = hourWidthPx / 60;
+
+    function timeToMinutes(time) {
+        // Chuyển "HH:MM" hoặc "H:MM" sang phút
+        const [h, m] = time.split(":").map(Number);
+        return h * 60 + m;
+    }
+
+    document.querySelectorAll(".event").forEach((event) => {
+        const start = event.dataset.start;
+        if (!start) return;
+
+        const startMinutes = timeToMinutes(start);
+
+        const leftPx = startMinutes * minuteWidthPx + offsetPx;
+        // chuyển sang %
+        const leftPercent = (leftPx / timelineWidthPx) * 100;
+
+        event.style.left = leftPercent + "%";
+    });
+
+    /*************************timeline group events*************************/
+
+    document.querySelectorAll(".group").forEach((group) => {
+        updateGroupProgressByIcons(group);
+    });
+
+
+    // Drag tất cả event
+    document.querySelectorAll(".event").forEach((event) => {
+        let isDragging = false;
+        let startX = 0;
+        let leftStart = 0;
+
+        event.addEventListener("mousedown", (e) => {
+            isDragging = true;
+            startX = e.clientX;
+            leftStart = event.offsetLeft;
+            event.style.zIndex = 1000;
+            document.body.style.userSelect = "none";
+        });
+
+        document.addEventListener("mousemove", (e) => {
+            if (!isDragging) return;
+
+            const deltaX = e.clientX - startX;
+            let newLeft = leftStart + deltaX;
+
+            const minuteWidth = 110 / 60;
+            newLeft = Math.round(newLeft / minuteWidth) * minuteWidth;
+
+            // const timeline = event.closest(".timeline-content");
+
+            const eventsEl = event.closest(".events");
+
+            // 39.58%
+            const lineStart = eventsEl.offsetWidth * 0.3958;
+            // 100% - 22.92%
+            const lineEnd = eventsEl.offsetWidth * (1 - 0.2292);
+
+            const maxLeft = lineEnd - event.offsetWidth;
+            const minLeft = lineStart;
+
+            newLeft = Math.max(minLeft, Math.min(maxLeft, newLeft));
+            event.style.left = newLeft + "px";
+
+            const group = event.closest(".group");
+
+            // Cập nhật overlay dựa trên icon đầu/cuối
+            updateGroupProgressByIcons(group);
+        });
+
+        document.addEventListener("mouseup", () => {
+            if (isDragging) {
+                isDragging = false;
+                event.style.zIndex = "";
+                document.body.style.userSelect = "";
+            }
+        });
+    });
+
+    function updateGroupProgressByIcons(group) {
+        const timelineWidth = group.querySelector(".events").offsetWidth;
+        const icons = group.querySelectorAll(".event.icon");
+
+        if (icons.length < 2) return;
+
+        const startIcon = icons[0];
+        const endIcon = icons[icons.length - 1];
+
+        const startPercent =
+            ((startIcon.offsetLeft + startIcon.offsetWidth / 2) / timelineWidth) * 100;
+        const endPercent =
+            ((endIcon.offsetLeft + endIcon.offsetWidth / 2) / timelineWidth) * 100;
+
+        const overlay = group.querySelector(".overlay");
+        overlay.style.background = `linear-gradient(to right,
+        rgba(255,255,255,0.25) ${startPercent}%,
+        rgba(255,255,255,0) ${startPercent}% ${endPercent}%,
+        rgba(255,255,255,0.25) ${endPercent}%)`;
+
+        const eventsEl = group.querySelector(".events");
+        eventsEl.style.setProperty("--line-left", startPercent + "%");
+        eventsEl.style.setProperty("--line-width", endPercent - startPercent + "%");
+    }
+
+    /*************************checkbox*************************/
+    // 1. Checkbox từng group
+    document.querySelectorAll(".tour-checkbox").forEach((checkbox) => {
+        checkbox.addEventListener("change", () => {
+            const groupId = checkbox.dataset.group;
+            const leftGroup = document.querySelector(
+                `.group-name[data-group='${groupId}']`
+            );
+            const rightGroup = document.querySelector(
+                `.group[data-group='${groupId}']`
+            );
+
+            if (checkbox.checked) {
+                leftGroup.classList.add("active");
+                rightGroup.classList.add("active");
+            } else {
+                leftGroup.classList.remove("active");
+                rightGroup.classList.remove("active");
+            }
+        });
+    });
+
+    // 2. Checkbox “VEHICLES” tick/bỏ tất cả
+    const mainCheckbox = document.querySelector(".check-vehicles input");
+    mainCheckbox.addEventListener("change", () => {
+        document.querySelectorAll(".tour-checkbox").forEach((cb) => {
+            cb.checked = mainCheckbox.checked;
+            cb.dispatchEvent(new Event("change"));
+        });
+    });
+    };
+    /*************************map*************************/
+    window.initMap = function () {
+        var map = L.map("map").setView([10.7769, 106.7009], 13);
+
+        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            maxZoom: 19,
+            attribution:
+                '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        }).addTo(map);
+
+        // marker demo
+        // L.marker([10.762622, 106.660172]).addTo(map)
+        //     .bindPopup("Kho chính")
+        //     .openPopup();
+
+        // L.marker([51.5, -0.09])
+        //   .addTo(map)
+        //   .bindPopup("A pretty CSS popup.<br> Easily customizable.")
+        //   .openPopup();
+    };
+</script>
+@code { 
+   
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("initTimeline");
+            await JS.InvokeVoidAsync("initMap"); 
+        }
+    }
+}

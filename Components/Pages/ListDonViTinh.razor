@@ -1,0 +1,216 @@
+﻿@page "/don-vi-tinh"
+@using BlazorServerApp.Models
+@using Microsoft.EntityFrameworkCore
+@inject BlazorServerApp.Data.AppDbContext _context
+@inject IJSRuntime JS
+
+<div class="container-fluid p-4">
+    <h3 class="mb-4">Quản Lý Đơn Vị Tính</h3>
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">@((isEdit) ? "Cập nhật đơn vị tính" : "Thêm đơn vị tính")</h5>
+                </div>
+                <div class="card-body">
+                    <EditForm Model="@formModel" OnValidSubmit="Save">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger">@errorMessage</div>
+                        }
+
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Tên đơn vị tính</label>
+                                <InputText @bind-Value="formModel.TenDonViTinh" class="form-control" />
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label fw-bold">Ghi chú</label>
+                                <InputText @bind-Value="formModel.GhiChu" class="form-control" />
+                            </div>
+                        </div>
+
+                        <div class="mt-3">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save me-1"></i> @((isEdit) ? "Cập nhật" : "Thêm mới")
+                            </button>
+                            @if (isEdit)
+                            {
+                                <button type="button" class="btn btn-secondary ms-2" @onclick="CancelEdit">
+                                    <i class="bi bi-x-circle me-1"></i> Hủy
+                                </button>
+                            }
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body p-0">
+                    <table class="table table-hover table-striped mb-0">
+                        <thead class="table-primary">
+                            <tr>
+                                <th>Tên đơn vị tính</th>
+                                <th>Ghi chú</th>
+                                <th class="text-center" style="width:120px;">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var donViTinh in donViTinhs)
+                            {
+                                <tr>
+                                    <td>@donViTinh.TenDonViTinh</td>
+                                    <td>@donViTinh.GhiChu</td>
+                                    <td class="text-center">
+                                        <a href="javascript:void(0)"
+                                           class="text-warning me-2"
+                                           title="Sửa"
+                                           @onclick="() => Edit(donViTinh)">
+                                            <i class="bi bi-pencil-square fs-5"></i>
+                                        </a>
+                                        <a href="javascript:void(0)"
+                                           class="text-danger"
+                                           title="Xóa"
+                                           @onclick="() => ConfirmDelete(donViTinh.Id)">
+                                            <i class="bi bi-trash fs-5"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@code {
+    private List<DonViTinh> donViTinhs = new();
+    private DonViTinh formModel = new();
+    private bool isEdit = false;
+    private string? errorMessage;
+
+    // Ham khoi tao khi load component
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    // Load danh sach don vi tinh tu database
+    private async Task LoadData()
+    {
+        donViTinhs = await _context.DonViTinhs
+            .OrderBy(d => d.TenDonViTinh)
+            .ToListAsync();
+    }
+
+    // Xu ly them moi hoac cap nhat
+    private async Task Save()
+    {
+        errorMessage = null;
+
+        formModel.TenDonViTinh = formModel.TenDonViTinh?.Trim();
+
+        if (string.IsNullOrWhiteSpace(formModel.TenDonViTinh))
+        {
+            errorMessage = "Tên đơn vị tính không được để trống.";
+            return;
+        }
+
+        bool isTenTrung = isEdit
+            ? _context.DonViTinhs.Any(d => d.TenDonViTinh == formModel.TenDonViTinh && d.Id != formModel.Id)
+            : _context.DonViTinhs.Any(d => d.TenDonViTinh == formModel.TenDonViTinh);
+
+        if (isTenTrung)
+        {
+            errorMessage = "Tên đơn vị tính đã tồn tại!";
+            return;
+        }
+
+        if (isEdit)
+        {
+            // Neu dang sua, tim id de cat nhat
+            var donViTinh = await _context.DonViTinhs.FindAsync(formModel.Id);
+            if (donViTinh != null)
+            {
+                donViTinh.TenDonViTinh = formModel.TenDonViTinh;
+                donViTinh.GhiChu = formModel.GhiChu;
+            }
+        }
+        else
+        {
+            // Neu them moi
+            _context.DonViTinhs.Add(formModel);
+        }
+
+        // Luu thay doi xuong database
+        await _context.SaveChangesAsync();
+
+        // Reset form va trang thai
+        formModel = new DonViTinh();
+        isEdit = false;
+
+        // Load lai danh sach sau khi cap nhat
+        await LoadData();
+    }
+
+    // Gan du lieu vao form de sua
+    private void Edit(DonViTinh donViTinh)
+    {
+        formModel = new DonViTinh
+        {
+            Id = donViTinh.Id,
+            TenDonViTinh = donViTinh.TenDonViTinh,
+            GhiChu = donViTinh.GhiChu
+        };
+        isEdit = true;
+        errorMessage = null;
+    }
+
+    // Huy chinh sua va reset form
+    private void CancelEdit()
+    {
+        formModel = new DonViTinh();
+        isEdit = false;
+        errorMessage = null;
+    }
+
+    // Xoa don vi tinh
+    private async Task Delete(int id)
+    {
+        errorMessage = null;
+
+        // Kiem tra xem co san pham nao su dung don vi tinh nay khong
+        bool isDonViTinhUsed = await _context.SanPhams.AnyAsync(s => s.DonViTinhId == id);
+
+        if (isDonViTinhUsed)
+        {
+            errorMessage = "Không thể xóa vì đơn vị tính này đang được sử dụng bởi sản phẩm";
+            return;
+        }
+
+        var donViTinh = await _context.DonViTinhs.FindAsync(id);
+        if (donViTinh != null)
+        {
+            _context.DonViTinhs.Remove(donViTinh);
+            await _context.SaveChangesAsync();
+            await LoadData();
+        }
+    }
+
+    private async Task ConfirmDelete(int id)
+    {
+        if (await JS.InvokeAsync<bool>("confirm", "Bạn có chắc muốn xóa?"))
+        {
+            await Delete(id);
+        }
+    }
+
+}

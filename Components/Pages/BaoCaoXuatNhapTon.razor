@@ -1,0 +1,135 @@
+﻿@page "/bao-cao-xuat-nhap-ton"
+@using BlazorServerApp.Models
+@using Microsoft.EntityFrameworkCore
+@inject BlazorServerApp.Data.AppDbContext _context
+<div class="container-fluid p-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-light">
+                    <h5 class="mb-0">Báo Cáo Xuất Nhập Tồn</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Filter -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Từ ngày:</label>
+                            <InputDate class="form-control" @bind-Value="tuNgay" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Đến ngày:</label>
+                            <InputDate class="form-control" @bind-Value="denNgay" />
+                        </div>
+                        <div class="col-md-3 align-self-end">
+                            <button class="btn btn-primary" @onclick="TimKiem">Tìm kiếm</button>
+                        </div>
+                    </div>
+
+                    <!-- Table -->
+                    @if (baoCaoXuatNhapTonDTOs.Any())
+                    {
+                        <div class="table-responsive mt-4">
+                            <table class="table table-bordered table-striped table-hover text-center">
+                                <thead class="table-primary text-center">
+                                    <tr>
+                                        <th>Mã Sản Phẩm</th>
+                                        <th>Tên Sản Phẩm</th>
+                                        <th>Số Lượng Đầu Kỳ</th>
+                                        <th>Số Lượng Nhập</th>
+                                        <th>Số Lượng Xuất</th>
+                                        <th>Số Lượng Cuối Kỳ</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var baoCaoXuatNhapTonDTO in baoCaoXuatNhapTonDTOs)
+                                    {
+                                        <tr>
+                                            <td>@baoCaoXuatNhapTonDTO.MaSanPham</td>
+                                            <td>@baoCaoXuatNhapTonDTO.TenSanPham</td>
+                                            <td>@baoCaoXuatNhapTonDTO.SoLuongDauKy</td>
+                                            <td>@baoCaoXuatNhapTonDTO.SoLuongNhap</td>
+                                            <td>@baoCaoXuatNhapTonDTO.SoLuongXuat</td>
+                                            <td>@baoCaoXuatNhapTonDTO.SoLuongCuoiKy</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                                <tfoot class="fw-bold table-light">
+                                    <tr>
+                                        <td colspan="2" class="text-end">Tổng cộng</td>
+                                        <td>@baoCaoXuatNhapTonDTOs.Sum(x => x.SoLuongDauKy)</td>
+                                        <td>@baoCaoXuatNhapTonDTOs.Sum(x => x.SoLuongNhap)</td>
+                                        <td>@baoCaoXuatNhapTonDTOs.Sum(x => x.SoLuongXuat)</td>
+                                        <td>@baoCaoXuatNhapTonDTOs.Sum(x => x.SoLuongCuoiKy)</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    }
+                    else if (daTim)
+                    {
+                        <p>Không có dữ liệu phù hợp.</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@code {
+    private DateTime tuNgay = DateTime.Today.AddDays(-21);
+    private DateTime denNgay = DateTime.Today;
+    private List<BaoCaoXuatNhapTonDTO> baoCaoXuatNhapTonDTOs = new();
+    private bool daTim = false;
+
+    private async Task TimKiem()
+    {
+        daTim = true;
+
+        // Lấy toàn bộ sản phẩm
+        var sanPhams = await _context.SanPhams.ToListAsync();
+
+        baoCaoXuatNhapTonDTOs = new();
+
+        foreach (var sanPham in sanPhams)
+        {
+            var dauKyNhap = await _context.PhieuNhapRawDatas
+                .Include(p => p.PhieuNhap)
+                .Where(p => p.SanPhamId == sanPham.Id && p.PhieuNhap.NgayNhapKho < tuNgay)
+                .SumAsync(p => p.SoLuongNhap);
+
+            var dauKyXuat = await _context.PhieuXuatRawDatas
+                .Include(p => p.PhieuXuat)
+                .Where(p => p.SanPhamId == sanPham.Id && p.PhieuXuat.NgayXuatKho < tuNgay)
+                .SumAsync(p => p.SoLuongXuat);
+
+            var soLuongNhap = await _context.PhieuNhapRawDatas
+                .Include(p => p.PhieuNhap)
+                .Where(p => p.SanPhamId == sanPham.Id && p.PhieuNhap.NgayNhapKho >= tuNgay && p.PhieuNhap.NgayNhapKho <= denNgay)
+                .SumAsync(p => p.SoLuongNhap);
+
+            var soLuongXuat = await _context.PhieuXuatRawDatas
+                .Include(p => p.PhieuXuat)
+                .Where(p => p.SanPhamId == sanPham.Id && p.PhieuXuat.NgayXuatKho >= tuNgay && p.PhieuXuat.NgayXuatKho <= denNgay)
+                .SumAsync(p => p.SoLuongXuat);
+
+            var soLuongDauKy = dauKyNhap - dauKyXuat;
+            var soLuongCuoiKy = soLuongDauKy + soLuongNhap - soLuongXuat;
+
+            if (soLuongDauKy != 0 || soLuongNhap != 0 || soLuongXuat != 0 || soLuongCuoiKy != 0)
+            {
+                baoCaoXuatNhapTonDTOs.Add(new BaoCaoXuatNhapTonDTO
+                {
+                    MaSanPham = sanPham.MaSanPham,
+                    TenSanPham = sanPham.TenSanPham,
+                    SoLuongDauKy = soLuongDauKy,
+                    SoLuongNhap = soLuongNhap,
+                    SoLuongXuat = soLuongXuat,
+                    SoLuongCuoiKy = soLuongCuoiKy
+                });
+            }
+        }
+
+
+    }
+}
